@@ -16,6 +16,7 @@ if(process.env.WCD_RUNS_DIR)process.env.CEST_RUNS_DIR=process.env.WCD_RUNS_DIR;
 if(args['runs-dir'])process.env.CEST_RUNS_DIR=path.resolve(args['runs-dir']);
 const print=value=>process.stdout.write(JSON.stringify(value)+'\n');
 const help={commands:['setup --workspace <writable folder>','verify','init --selection <approved Firecrawl plan folder> [--name <name>]','scan | group | capture | detect | report --run <ID or absolute run folder>','import-result --run <ID or folder> --request <request ID> --result-file <saved JSON> [--model <actual Kajoo model name>] [--trace-id <trace>]','all --run <ID or folder> [--through group|capture|detect|report] [--minutes 4]','plan --url <seed> --discovery-file <saved Firecrawl JSON>','select --plan <folder> --quotas-file <user choices JSON>','consolidate | estimate --run <folder>','import-consolidation | import-estimates --run <folder> --result-file <JSON>','merge --run <folder> --keys-file <JSON array> --name <label>','reset-merges --run <folder>','status --run <ID or folder>'],scope:'The Kajoo skill always obtains a saved Firecrawl Map response, groups it and freezes approved sample quantities; scripts process the selected URLs and prepare/import screenshot analysis; the configured Kajoo agent performs model reasoning. No direct model API, provider key, CMS mutation or code generation.'};
+help.commands.push('next --run <ID or folder> (compact saved checkpoint and one next packet)');
 async function setup(){
  if(typeof args.workspace!=='string')throw new Error('setup requires --workspace <writable folder>');
  const workspace=path.resolve(args.workspace),runtime=path.join(workspace,'estimator-runtime','estimator');
@@ -86,9 +87,8 @@ async function main(){
  let id=args.run;if(/[\\/]/.test(id)){const folder=path.resolve(id);process.env.CEST_RUNS_DIR=path.dirname(folder);id=path.basename(folder);}
  const estimateCommands=['consolidate','import-consolidation','estimate','import-estimates','merge','reset-merges'];
  await store.getRun(id); // Reject legacy/mixed viewport runs before any mutation.
- if(command==='status'){
-  const run=await store.getRun(id),checkpoint=await store.readJson(store.inRun(id,'discovery-checkpoint.json'),{completed:[]});
-  print({status:'ok',runId:id,urls:run.urls.length,selected:Object.fromEntries(Object.entries(run.selection).map(([vp,u])=>[vp,u.length])),completed:checkpoint.completed,usage:run.usage,modelExecution:'kajoo-platform',report:await store.exists(store.inRun(id,'export/discovery.json'))?'export/discovery.json':null});return;
+ if(command==='status'||command==='next'){
+  print(await (await import('./lib/work-state.mjs')).saveWorkState(id));return;
  }
  const stages=['scan','group','capture','detect','report'];
  if(!stages.includes(command)&&command!=='all'&&command!=='import-result'&&!estimateCommands.includes(command))throw new Error('Unknown command; use help');
@@ -98,6 +98,7 @@ async function main(){
  try{handle=await fs.open(lock,'wx');await handle.writeFile(JSON.stringify({pid:process.pid,at:new Date().toISOString()}));}
  catch(e){if(e.code==='EEXIST')throw new Error('Another operation or interrupted lock exists. Check discovery.lock and confirm the owner exited before removing that lock; never run overlapping detection.');throw e;}
  try{
+  await fs.rm(store.inRun(id,'execution-error.json'),{force:true});
   if(estimateCommands.includes(command)){
    const operations=await import('./lib/estimation.mjs');print(await operations.execute(id,command,args));return;
   }
@@ -146,10 +147,16 @@ async function main(){
     if(!Object.values(run.selection).some(u=>u.length))throw new Error('Run group and capture before detect');
     const analysis=await (await import('./lib/detect.mjs')).prepareDetection(id);
     if(analysis.status==='awaiting-analysis'){
-     print({...analysis,runId:id,completed:checkpoint.completed,requests:analysis.requests.slice(0,20),requestCount:analysis.requests.length,truncated:analysis.requests.length>20,next:'The Kajoo agent reads each saved prompt/image, writes component JSON, runs import-result, then resumes all. No human approval or provider API key is required.'});return;
+     print({...await (await import('./lib/work-state.mjs')).analysisReceipt(id,analysis),completed:checkpoint.completed});return;
     }
    }
    if(stage==='report'){
+    const analysis=await (await import('./lib/detect.mjs')).prepareDetection(id);
+    if(analysis.pending)throw new Error(`Report blocked: ${analysis.pending} screenshot analyses pending; use next and import-result, then resume. Do not restart capture.`);
+    const {loadLlm}=await import('./lib/detect.mjs');
+    let componentCount=0;
+    for(const [vp,urls] of Object.entries(run.selection))for(const url of urls){const page=run.pages.find(p=>p.url===url);if(page)componentCount+=(await loadLlm(id,vp,page.slug))?.components.length??0;}
+    if(!componentCount)throw new Error('Report blocked: all imported screenshot results are empty. Inspect saved tiles and correct affected results with import-result --replace; do not restart capture or claim a complete empty Build List.');
     const fresh=await store.getRun(id);const {buildPageData}=await import('./lib/pagedata.mjs');const {drawAnnotated}=await import('./lib/annotations.mjs');const {selectAnnotations}=await import('./lib/annotation-selection.mjs');
     for(const p of fresh.pages)for(const vp of fresh.viewports){
      if(p.viewports[vp]?.status!=='ok'||!types.hasShot(p.viewports[vp]))continue;
@@ -165,6 +172,7 @@ async function main(){
      await store.writeJson(store.inRun(id,`export/annotated/${vp}/${p.slug}.json`),ledger);
     }
     const exported=await (await import('./lib/handoff.mjs')).exportHandoff(id);
+    if(!exported.summary.families)throw new Error('Report blocked: refinement produced an empty Build List. Inspect detections and validation in export/discovery.json and correct affected analysis; do not recapture successful pages or claim completion.');
     const data=await store.readJson(store.inRun(id,'export/discovery.json'));
     const quality=await (await import('./lib/quality.mjs')).assessQuality(data);
     await store.writeJson(store.inRun(id,'export/quality.json'),quality);
@@ -186,6 +194,12 @@ async function main(){
   if(checkpoint.completed.includes('report'))await (await import('./lib/estimation.mjs')).exportInventory(id);
   const quality=checkpoint.completed.includes('report')?await store.readJson(store.inRun(id,'export/quality.json'),null):null;
   print({status:partial?'partial':quality?.status??'ok',runId:id,completed:checkpoint.completed,stages:receipts,...(quality?{qualityFile:'export/quality.json',readyForImplementation:false}: {})});
- }finally{await handle.close();await fs.unlink(lock);}
+ }catch(error){
+  await store.writeJson(store.inRun(id,'execution-error.json'),{command,reason:error.message,at:new Date().toISOString()});
+  throw error;
+ }finally{
+  await handle.close();await fs.unlink(lock);
+  await (await import('./lib/work-state.mjs')).saveWorkState(id);
+ }
 }
 await main().catch(error=>{print({status:'blocked',reason:error.message});process.exitCode=2;});

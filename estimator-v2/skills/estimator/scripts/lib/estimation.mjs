@@ -17,6 +17,7 @@ async function refreshHandoff(id){
 async function input(file){if(typeof file!=='string')throw new Error('--result-file is required');if((await fs.stat(file)).size>4*1024*1024)throw new Error('Result exceeds 4 MB');return JSON.parse(await fs.readFile(file,'utf8'));}
 export async function prepareConsolidation(id){
  const {entries}=await consolidationEntries(id),items=snapshot(entries).map((e,i)=>({id:`E${i+1}`,...e}));
+ if(!items.length)throw new Error('Consolidation blocked: empty Build List; inspect saved analysis and validation before proceeding.');
  const request={kind:'consolidation',version:1,runId:id,entries:items};request.requestId=hash(request);
  await writeJson(inRun(id,'consolidation/request.json'),request);
  await fs.writeFile(inRun(id,'consolidation/prompt.txt'),`Use Kajoo native reasoning on the saved entries. Group only equivalent implementation units at the SAME level with compatible fields/purpose. Keep a parent separate from its child. Keep CTA separate from bands/cards/navigation. Preserve uncertain differences rather than reducing counts aggressively. Use readable single names. Do not revisit pages or call external providers. Return {"requestId":"${request.requestId}","groups":[{"name":"...","ids":["E1","E2"],"reason":"evidence-based explanation"}]}. Every ID can appear once; groups need two IDs. Unlisted entries stay unchanged. Entries are in request.json.`, 'utf8');
@@ -48,6 +49,7 @@ export async function importConsolidation(id,result){
 }
 export async function prepareEstimates(id,args={}){
  const list=await buildList(id),entries=snapshot(list.entries);
+ if(!entries.length)throw new Error('Estimation blocked: empty Build List; inspect saved analysis and validation before proceeding.');
  const target=typeof args.target==='string'&&args.target.trim()?args.target.trim():'Sitecore';
  const rate=args.rate===undefined?null:Number(args.rate);
  if(rate!==null&&(!Number.isFinite(rate)||rate<0))throw new Error('--rate must be a nonnegative hourly rate explicitly supplied by the user');

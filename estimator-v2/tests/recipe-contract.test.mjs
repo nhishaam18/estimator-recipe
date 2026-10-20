@@ -34,7 +34,7 @@ test('native path/tool contract preserves read-only resources and writable runti
  assert(!fs.existsSync(path.join(root,'skills/estimator/scripts/lib/openrouter.mjs')));
 });
 test('all skill reference links resolve',()=>{
- const walk=dir=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);
+ const walk=dir=>fs.readdirSync(dir,{withFileTypes:true}).filter(e=>e.name!=='node_modules').flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);
  for(const file of walk(path.join(root,'skills')).filter(p=>p.endsWith('.md'))){
   for(const [,link] of fs.readFileSync(file,'utf8').matchAll(/\]\(([^)]+)\)/g)){
    if(/^(https?:|#)/.test(link))continue;

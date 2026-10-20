@@ -4,7 +4,7 @@ Read the advertised SKILL.md first using native `read`; Kajoo stages its registe
 
 1. From the staged skill, run with native bash: node <skill>/scripts/cest.mjs setup --workspace /workspace
 2. Use the returned writable runtime (/workspace/estimator-runtime/estimator). In runtime/scripts run npm ci --ignore-scripts.
-3. Run node scripts/cest.mjs verify. It checks Sharp and launches the preinstalled Playwright/Chromium pair. Do not install browser packages or repair caches.
+3. Run node <runtime>/scripts/cest.mjs verify using the returned absolute runtime path. It checks Sharp and launches the preinstalled Playwright/Chromium pair. Do not install browser packages or repair caches.
 4. Set CEST_RUNS_DIR=/workspace/estimator in the command environment for all operations. setup returns this path; it does not modify subsequent shell environments.
 5. The Kajoo agent must have image-reading, file-writing and command tools. verify does not test model image access. No application, launch entry or credential file is created.
 

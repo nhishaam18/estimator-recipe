@@ -7,6 +7,7 @@ import { mergeTiles, parseTile } from './merge.mjs';
 import { fillPrompt, scaleInstruction } from './prompt.mjs';
 import { exists, getRun, inRun, readJson, writeJson } from './store.mjs';
 import { nativeAnalysisPrompt, validateNativeResult } from './analysis-contract.mjs';
+import { saveWorkState } from './work-state.mjs';
 
 export const registryFile = runId => inRun(runId, 'llm/registry.json');
 export const llmFile = (runId, viewport, slug) => inRun(runId, `llm/${viewport}/${slug}.json`);
@@ -213,5 +214,8 @@ export async function importDetection(runId, requestId, resultFile, metadata = {
     }
     const pageComplete = await finishPage(run, current);
     const prepared = await prepareDetection(runId);
-    return { status: prepared.status, requestId, pageComplete, pending: prepared.pending, manifest: manifestPath, idempotent: !!previous && !changed, corrected: !!changed };
+    const state = await saveWorkState(runId, { analysis: prepared });
+    return { status: prepared.status, requestId, pageComplete, pending: prepared.pending, manifest: manifestPath, componentCount: result.components.length,
+        reviewRequired: result.components.length === 0, ...(result.components.length === 0 ? { warning: 'Empty tile result: inspect this tile and confirm the saved emptyReason before continuing; do not restart capture.' } : {}),
+        checkpoint: 'work-state.json', next: state.next, idempotent: !!previous && !changed, corrected: !!changed };
 }

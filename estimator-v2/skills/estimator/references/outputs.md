@@ -5,6 +5,9 @@ The run folder is returned by init and must be retained in run evidence and a co
 | Path | Purpose |
 | --- | --- |
 | run.json / discovery-checkpoint.json | Scope, desktop capture state, saved stage progress and Kajoo usage unavailable markers |
+| work-state.json | Derived compact progress, source paths and one next operation |
+| execution-error.json | Latest failed command and reason; checkpoint directs diagnosis before resuming |
+| execution-notes.json | Small agent-written resume decisions, visual-review outcomes and unresolved findings |
 | input/ | Supplied URL list or frozen discovery plan/sample |
 | html/desktop, rects/desktop, scan/desktop | Prepared DOM, measured geometry and structural scans |
 | shots/desktop | Original prepared full-page desktop screenshots |

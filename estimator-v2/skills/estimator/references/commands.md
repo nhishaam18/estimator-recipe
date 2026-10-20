@@ -22,6 +22,9 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Estimate preparation | estimate --run <folder> [--target <explicit user CMS/stack override>] [--rate <user hourly rate> --currency <ISO code>] |
 | Estimate import | import-estimates --run <folder> --result-file <JSON> |
 | Progress | status --run <folder> |
+| Compact resume / next tile | next --run <folder> |
+
+Detection/import receipts return one next packet and counts. Use next after resume, not between successful imports. Resolve prompt/image/result paths under the run folder. work-state.json saves derived progress; execution-notes.json holds compact decisions and visual-review outcomes. See [context budget](context-budget.md). Wait for one bounded foreground command to exit; never background/poll/relaunch an active pipeline.
 
 Desktop is enforced, not just a default. --viewports mobile or mixed viewports is rejected. --model on init is rejected; configure the image-capable model in Kajoo. On import-result, optional --model and --trace-id record actual analysis provenance only, never choose or call a model.
 
