@@ -1,7 +1,0 @@
-name: firecrawl
-type: mcp-custom
-status: disconnected
-description: Discover website URLs with Firecrawl Map. During onboarding, replace <your-api-key> in the Authorization header with your own Firecrawl API key, then connect. Leave Client ID, Client Secret and Scope blank.
-url: https://mcp.firecrawl.dev/v2/mcp
-headers:
-  Authorization: 'Bearer <your-api-key>'
