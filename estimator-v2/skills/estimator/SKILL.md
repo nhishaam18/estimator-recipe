@@ -3,7 +3,7 @@ name: estimator
 description: Use when supplied website URLs need desktop component discovery, annotated screenshots, a readable CMS-neutral component report and implementation effort estimates in Kajoo chat.
 ---
 
-# Estimator 2.0.0
+# Estimator 2.0.1
 
 Operate through Kajoo chat. Stop at reports and estimates: no application, preview server, component code generation, CMS mutation or deployment. Use the configured Kajoo image-capable model and platform file/image tools. Scripts never call a model API, require a provider credential or select an external model. Missing image access is a blocker, never a reason to guess detections from DOM.
 
