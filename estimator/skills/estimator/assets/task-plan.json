@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "epicTitle": "Desktop Component Estimation",
+  "tasks": [
+    {
+      "key": "prepare", "title": "Prepare URL scope and estimation runtime", "rank": 1000, "dependsOn": [],
+      "acceptance": ["Explicit URL scope or approved persisted discovery sample", "Writable runtime and preinstalled browser verified", "One initialized run with saved binding and scope paths"]
+    },
+    {
+      "key": "analyze", "title": "Capture and analyze desktop evidence", "rank": 2000, "dependsOn": ["prepare"],
+      "acceptance": ["Consent/popup preparation and safe browser capture", "Native Kajoo image inspection and validated imports", "Actual capture coverage, annotation review and unresolved findings recorded"]
+    },
+    {
+      "key": "report", "title": "Refine components and produce reports", "rank": 3000, "dependsOn": ["analyze"],
+      "acceptance": ["Two-level unique inventory with evidence-backed ownership", "Native consolidation and current readable style/typography reports", "Build-list, quality, validation and output manifests verified"]
+    },
+    {
+      "key": "estimate", "title": "Estimate implementation effort and deliver", "rank": 4000, "dependsOn": ["report"],
+      "acceptance": ["Current source-bound ranges and explicit assumptions/exclusions", "Unique work counted once; money only with user-supplied rate", "Artifacts and saved Technical report verified; stop before implementation"]
+    }
+  ]
+}

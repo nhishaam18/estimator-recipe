@@ -1,0 +1,2 @@
+# Estimator setup uses npm ci; publish its locked runtime dependencies.
+!skills/estimator/scripts/package-lock.json

@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {createServer} from 'node:http';
+const cli=fileURLToPath(new URL('../cest.mjs',import.meta.url));
+const call=(args,env)=>new Promise((resolve,reject)=>{const child=spawn(process.execPath,[cli,...args],{env:{...process.env,...env}});let out='',err='';child.stdout.on('data',b=>out+=b);child.stderr.on('data',b=>err+=b);child.on('error',reject);child.on('close',code=>{let json;try{json=JSON.parse(out.trim().split('\n').at(-1));}catch{}resolve({code,json,out,err});});});
+test('requested mapping freezes quotas and reuses the same bound desktop run',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'est2-plan-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const env={CEST_RUNS_DIR:path.join(root,'runs'),CEST_PLAN_DIR:path.join(root,'plans')},file=path.join(root,'map.json');
+ await fs.writeFile(file,JSON.stringify({links:['https://example.invalid/','https://example.invalid/articles/one','https://example.invalid/articles/two']}));
+ const plan=await call(['plan','--url','https://example.invalid/','--discovery-file',file],env);assert.equal(plan.code,0,plan.out+plan.err);
+ assert(plan.json.groups.length>0);const quotas=Object.fromEntries(plan.json.groups.map(g=>[g.id,Math.min(g.count,1)]));const q=path.join(root,'quotas.json');await fs.writeFile(q,JSON.stringify(quotas));
+ const select=await call(['select','--plan',plan.json.planDir,'--quotas-file',q],env);assert.equal(select.code,0,select.out+select.err);
+ const args=['init','--selection',plan.json.planDir];const first=await call(args,env),second=await call(args,env);
+ assert.equal(first.code,0,first.out+first.err);assert.equal(second.code,0,second.out+second.err);assert.equal(first.json.runDir,second.json.runDir);assert.equal(second.json.resumed,true);
+ const run=JSON.parse(await fs.readFile(path.join(first.json.runDir,'run.json')));assert.deepEqual(run.viewports,['desktop']);assert.equal(run.urls.length,select.json.selected);
+ assert.equal(JSON.parse(await fs.readFile(path.join(first.json.runDir,'input/urls.json'))).source,'approved discovery sample');
+});
+test('CLI rejects mobile overrides and persists browser stop without completing or retrying a stage',async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'est2-stop-'));let hits=0;const server=createServer((req,res)=>{hits++;res.writeHead(429);res.end('Rate limited');});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ t.after(async()=>{await new Promise(r=>server.close(r));await fs.rm(root,{recursive:true,force:true});});
+ const urls=path.join(root,'urls.txt'),base=`http://127.0.0.1:${server.address().port}`;await fs.writeFile(urls,`${base}/a\n${base}/b`);
+ const env={CEST_RUNS_DIR:path.join(root,'runs')};
+ const mobile=await call(['init','--urls-file',urls,'--viewports','mobile'],env);assert.equal(mobile.code,2);assert.match(mobile.json.reason,/desktop/);
+ const init=await call(['init','--urls-file',urls],env);assert.equal(init.code,0,init.out+init.err);
+ const all=await call(['all','--run',init.json.runDir],env);assert.equal(all.json.status,'blocked',all.out+all.err);assert.equal(hits,1);
+ const again=await call(['all','--run',init.json.runDir],env);assert.equal(again.json.status,'blocked');assert.equal(hits,1);
+ const checkpoint=JSON.parse(await fs.readFile(path.join(init.json.runDir,'discovery-checkpoint.json')));assert(!checkpoint.completed.includes('scan'));
+ assert(await fs.stat(path.join(init.json.runDir,'browser-stop.json')));
+});
