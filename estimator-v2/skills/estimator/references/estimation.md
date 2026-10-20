@@ -1,0 +1,12 @@
+# Consolidation and implementation estimates
+
+Consolidation sends no HTTP request. consolidate saves consolidation/request.json and prompt.txt. Read them with Kajoo's model; reply with the exact requestId and groups of existing temporary IDs, name and reason. Only same-level equivalent units may group. Scripts reject stale inventory, duplicate/unknown IDs, mixed implementation types and known parent/child merges. Imported groups retain original source keys and aliases. Rebuild report after imports so family names and links match. reset-merges retains manual groups. Native consolidation is text-based; consult saved component reports when ambiguous and keep differences separate. It does not establish visual equivalence.
+
+estimate saves estimation/request.json and prompt.txt with the exact current unique build keys, target and optional user hourly rate. Read export/report.md, quality.json, all relevant component reports and linked child definitions. Return requestId, a nonempty assumptions array and exactly one item per key: key, lowHours, likelyHours, highHours, rationale and exclusions array. Ranges must be finite, nonnegative and ordered. They express Kajoo model judgment, not measured historical productivity.
+
+Count definition work once. Do not multiply by instances or pages. If a Team Grid embeds Team Cards, Grid hours cover grid structure/integration while Card hours cover Card implementation; shared CTA implementation is counted once. Include component modeling, desktop rendering and component QA; disclose project setup, integrations, content entry/migration, deployment, untested interactions and licensing as exclusions unless separately scoped. This recipe does not generate or implement code.
+
+Only a user-supplied rate via --rate and --currency yields monetary totals. Never copy a model-suggested rate into those options. Otherwise monetary totals are null and hours remain usable. The target CMS defaults to Sitecore without asking. Only an explicit user CMS/stack choice overrides it with --target. Do not infer a Sitecore product/version or specific schema; record those unprovided details as estimation uncertainty. Mobile implementation is outside scope.
+
+import-estimates validates complete inventory coverage and source binding. Inventory changes invalidate old estimates and replace their Markdown with a stale notice; prepare/import fresh estimates after merging/refinement. Uncertain evidence is explicitly provisional. Model API usage is available only through Kajoo traces and is not part of component labor pricing.
+
