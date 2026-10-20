@@ -22,7 +22,7 @@ export async function saveWorkState(id, {analysis} = {}) {
   counts:{selectedUrls:run.urls.length,representativeUrls:new Set(Object.values(run.selection??{}).flat()).size,failedPages:run.pages.filter(p=>Object.values(p.viewports).some(v=>v.status==='failed')).length},
   analysis:{pending:manifest?.pending??null,manifest:'analysis-requests/manifest.json'},
   sources:{input:'input/urls.json',plan:'input/url-plan.json',selection:'input/url-selection.json',notes:'execution-notes.json'},
-  outputs:{report:'export/report.md',quality:'export/quality.json',components:'export/components/',delivery:'export/delivery-manifest.json',estimationStatus:delivery?.estimationStatus??'not-prepared'},next};
+  outputs:{report:'export/report.md',quality:'export/quality.json',components:'export/components/',delivery:'export/delivery-manifest.json',visualReview:'export/visual-review.json',reviewManifest:'review-requests/manifest.json',estimationStatus:delivery?.estimationStatus??'not-prepared'},next};
  // A request manifest may survive a recapture/invalidation. Do not dispatch it before capture completes.
  if(stage&&stages.indexOf(stage)<stages.indexOf('detect')){
   state.status='partial';state.next={operation:'resume-pipeline',through:'detect',minutes:4};

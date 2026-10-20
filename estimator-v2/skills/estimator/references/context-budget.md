@@ -12,12 +12,11 @@ After compaction/resume, read these small records and only the source for the ne
 
 ## One screenshot packet
 
-1. Run all --run <folder> --through detect --minutes 4 once in the foreground and wait for it to exit. Resume partial work on the same run. On awaiting-analysis stop launching the pipeline and inspect packets.
-2. Read only next.promptFile and OPEN next.image, prefixing paths with the run folder. The prompt contains hash, viewport, tile index, geometry, response schema and bounded DOM hints. Normally do not reread request.json. Never infer image content from hints.
-3. Write specified JSON once to next.resultFile using the native writer. Do not echo detections in chat, embed images/base64 in shell commands, rewrite results in another tool call or reread them to prove writing succeeded. Import validates them. File-writing arguments may remain in context; avoid duplicate payloads.
-4. Run import-result --run <folder> --request <next.requestId> --result-file <absolute draft path>. Read its count, warning and next packet. Scripts retain originals, validate hashes/coordinates/parents and merge overlap. Do not repeat this in prose or edit llm caches manually.
-5. Correct validation failures using this packet and the specific error. For an empty result, recheck this tile once: fix omissions or preserve a genuine blank/decorative result with its reason and save the visual check in execution-notes.json. Do not restart capture. Reporting rejects entirely empty analysis; finish blocked/provisional if blank captures cannot support estimation.
-6. At zero pending resume all --through report --minutes 4. Read quality findings and OPEN the assembled annotation at legible scale against raw evidence. Data validation is not visual validation. Correct affected tiles with import-result --replace and regenerate; retain the existing two-pass correction limit per affected tile per execution. Unresolved findings stay provisional.
+1. Run all --through detect once in the foreground and wait for exit. Reuse partial checkpoints; awaiting-analysis means dispatch saved packets, not another pipeline.
+2. Follow [visual delegation](visual-delegation.md): send the next packet's paths/ID to a fresh Visual Analysis job, omitting runId. The child reads one prompt, opens one image and writes the result. The parent receives only a compact receipt and imports the assigned resultFile.
+3. Never forward complete discovery, prior jobs, detection JSON or images to the parent or the next child. Save outstanding job/request IDs in execution-notes.json; wait for automatic result delivery instead of polling or duplicating active work.
+4. After detection, run report then review. Delegate each paired raw/annotated crop to a fresh child and import-review its findings. Use focused corrections and import-result --replace; regenerate changed reviews, keeping the existing two-pass correction limit. No forced passing verdicts or capture restarts to fix model-output errors.
+5. Keep geometry, every required image inspection, source hashes, DOM-backed validation, classification and complete report/estimate evidence unchanged. Missing agent/image capability blocks rather than a main-chat fallback.
 
 Do not routinely load the full manifest, raw HTML/style ledger, run.json or prior results. On real failures use scripts to extract affected records/counts/paths instead of cat/head/tail of huge JSON. Never truncate required output or omit evidence to meet a token target. Keep tile dimensions, overlap, JPEG quality and visual inspection unchanged.
 

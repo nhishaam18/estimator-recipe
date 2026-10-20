@@ -42,3 +42,17 @@ test('all skill reference links resolve',()=>{
   }
  }
 });
+
+test('visual work is delegated through a focused agent with fresh-job instructions',()=>{
+ const main=read('agents/estimator.md'),worker=read('agents/visual-analysis.md');
+ assert(list(main,'tools').includes('kajoo/run-agent'));
+ assert.deepEqual(list(worker,'skills'),['estimator-visual-analysis']);
+ assert.deepEqual(list(worker,'tools'),[]);
+ assert.match(worker,/isDefault: false/);
+ assert.match(worker,/tags: \[Sub Agent\]/);
+ const delegation=read('skills/estimator/references/visual-delegation.md');
+ assert.match(delegation,/Omit `runId`/);
+ assert.match(delegation,/resultFile/);
+ assert.match(delegation,/import-review/);
+ assert.equal(read('skills/estimator-visual-analysis/references/annotation-contract.md'),read('skills/estimator/references/annotation-contract.md'));
+});

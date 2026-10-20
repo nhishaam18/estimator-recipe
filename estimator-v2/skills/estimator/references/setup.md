@@ -6,7 +6,7 @@ Read the advertised SKILL.md first using native `read`; Kajoo stages its registe
 2. Use the returned writable runtime (/workspace/estimator-runtime/estimator). In runtime/scripts run npm ci --ignore-scripts.
 3. Run node <runtime>/scripts/cest.mjs verify using the returned absolute runtime path. It checks Sharp and launches the preinstalled Playwright/Chromium pair. Do not install browser packages or repair caches.
 4. Set CEST_RUNS_DIR=/workspace/estimator in the command environment for all operations. setup returns this path; it does not modify subsequent shell environments.
-5. The Kajoo agent must have image-reading, file-writing and command tools. verify does not test model image access. No application, launch entry or credential file is created.
+5. Estimator needs native file/command tools and kajoo/run-agent; Visual Analysis needs native image-reading/file-writing tools and its focused skill. verify does not test child-agent availability or model image access. No application, launch entry or credential file is created.
 
 Only run trusted packaged scripts. Runtime dependencies are Cheerio and Sharp plus their locked dependencies. Keep the full relative package layout when transferring it.
 

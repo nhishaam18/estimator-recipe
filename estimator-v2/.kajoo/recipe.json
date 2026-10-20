@@ -1,5 +1,5 @@
 {
   "name": "Estimator 2.0.0",
   "version": "2.0.0",
-  "description": "Desktop-only website estimation with required Firecrawl URL discovery and user-selected random samples. Kajoo native model analysis produces annotated evidence, CMS-neutral reports and implementation estimates, defaulting to Sitecore. No phases, tasks, standalone app or provider key."
+  "description": "Desktop-only estimation with Firecrawl sampling, isolated Kajoo Visual Analysis jobs, source-bound annotation review, CMS-neutral reports and Sitecore-default implementation estimates. No standalone app, provider key, phases or tasks."
 }

@@ -17,6 +17,7 @@ if(args['runs-dir'])process.env.CEST_RUNS_DIR=path.resolve(args['runs-dir']);
 const print=value=>process.stdout.write(JSON.stringify(value)+'\n');
 const help={commands:['setup --workspace <writable folder>','verify','init --selection <approved Firecrawl plan folder> [--name <name>]','scan | group | capture | detect | report --run <ID or absolute run folder>','import-result --run <ID or folder> --request <request ID> --result-file <saved JSON> [--model <actual Kajoo model name>] [--trace-id <trace>]','all --run <ID or folder> [--through group|capture|detect|report] [--minutes 4]','plan --url <seed> --discovery-file <saved Firecrawl JSON>','select --plan <folder> --quotas-file <user choices JSON>','consolidate | estimate --run <folder>','import-consolidation | import-estimates --run <folder> --result-file <JSON>','merge --run <folder> --keys-file <JSON array> --name <label>','reset-merges --run <folder>','status --run <ID or folder>'],scope:'The Kajoo skill always obtains a saved Firecrawl Map response, groups it and freezes approved sample quantities; scripts process the selected URLs and prepare/import screenshot analysis; the configured Kajoo agent performs model reasoning. No direct model API, provider key, CMS mutation or code generation.'};
 help.commands.push('next --run <ID or folder> (compact saved checkpoint and one next packet)');
+help.commands.push('review --run <folder> (prepare paired annotation review)', 'import-review --run <folder> --request <id> --result-file <JSON>');
 async function setup(){
  if(typeof args.workspace!=='string')throw new Error('setup requires --workspace <writable folder>');
  const workspace=path.resolve(args.workspace),runtime=path.join(workspace,'estimator-runtime','estimator');
@@ -86,12 +87,13 @@ async function main(){
  if(typeof args.run!=='string')throw new Error('--run is required');
  let id=args.run;if(/[\\/]/.test(id)){const folder=path.resolve(id);process.env.CEST_RUNS_DIR=path.dirname(folder);id=path.basename(folder);}
  const estimateCommands=['consolidate','import-consolidation','estimate','import-estimates','merge','reset-merges'];
+ const reviewCommands=['review','import-review'];
  await store.getRun(id); // Reject legacy/mixed viewport runs before any mutation.
  if(command==='status'||command==='next'){
   print(await (await import('./lib/work-state.mjs')).saveWorkState(id));return;
  }
  const stages=['scan','group','capture','detect','report'];
- if(!stages.includes(command)&&command!=='all'&&command!=='import-result'&&!estimateCommands.includes(command))throw new Error('Unknown command; use help');
+ if(!stages.includes(command)&&command!=='all'&&command!=='import-result'&&!estimateCommands.includes(command)&&!reviewCommands.includes(command))throw new Error('Unknown command; use help');
  const through=typeof args.through==='string'?args.through:'report';if(!stages.includes(through))throw new Error('Invalid --through stage');
  const minutes=Number(args.minutes??4);if(!Number.isFinite(minutes)||minutes<=0)throw new Error('--minutes must be positive');
  const lock=store.inRun(id,'discovery.lock');let handle;
@@ -99,6 +101,12 @@ async function main(){
  catch(e){if(e.code==='EEXIST')throw new Error('Another operation or interrupted lock exists. Check discovery.lock and confirm the owner exited before removing that lock; never run overlapping detection.');throw e;}
  try{
   await fs.rm(store.inRun(id,'execution-error.json'),{force:true});
+  if(reviewCommands.includes(command)){
+   const review=await import('./lib/visual-review.mjs');
+   if(command==='import-review'&&(typeof args.request!=='string'||typeof args['result-file']!=='string'))throw new Error('import-review requires --request and --result-file');
+   if(args.replace!==undefined&&args.replace!==true)throw new Error('--replace is a flag without a value');
+   print(command==='review'?await review.prepareReview(id):await review.importReview(id,args.request,path.resolve(args['result-file']),{replace:args.replace===true}));return;
+  }
   if(estimateCommands.includes(command)){
    const operations=await import('./lib/estimation.mjs');print(await operations.execute(id,command,args));return;
   }
