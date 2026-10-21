@@ -76,3 +76,11 @@ test('scripts own routine execution with shared contracts and durable retention 
  assert.match(read('skills/estimator/references/context-budget.md'),/not provider token ceilings/);
  assert.match(read('skills/estimator-orchestration/SKILL.md'),/Inline-only output has no implicit file handle/);
 });
+
+test('all component types retain identifiable partial renders without adding another model pass',()=>{
+ const worker=read('skills/estimator-visual-analysis/SKILL.md');assert.match(worker,/ANY identifiable section or inner component/);assert.match(worker,/nonblocking/);
+ assert.match(read('agents/visual-analysis.md'),/Missing website images\/text\/icons inside an identifiable component are nonblocking/);
+ assert.match(read('skills/estimator-orchestration/SKILL.md'),/no automatic recapture, corrective worker, user question or retry/);
+ assert.match(read('skills/estimator/scripts/lib/analysis-contract.mjs'),/Partial rendering is nonblocking for EVERY identifiable Section\/Inner component/);
+ assert.match(read('skills/estimator/references/estimation.md'),/remains in the unique list and estimate/);
+});

@@ -97,6 +97,7 @@ export function assembleHandoff({ run, list, captures }) {
       const root = [...componentNodes].find(([, value]) => value === c)?.[0];
       const sample = root && styleNodes.get(root);
       const occurrence = { id: occurrenceId, familyId, captureId, sourceId: c.id, name: c.name, level: c.level, viewport: capture.viewport, url: capture.url,
+        ...(c.gaps?.length ? {gaps: c.gaps} : {}),
         parentOccurrenceId: null, ownerSourceId: c.validation.ownerId ?? null, selector: c.domSelector ?? null, savedDomOrder: domOrder.get(root) ?? null, box: box(c.box), labelEvidence: out.detections.at(-1).labelEvidence,
         elementIds: [], computedStyle: sample ? evidence.styles?.[sample.styleId] ?? null : null, variables: sample?.variables ?? {}, pseudo: sample?.pseudo ?? {},
         coverage: root ? 'saved-dom-meaningful-elements; visual-review-pending' : 'missing-or-ambiguous-owner-dom', behavior: 'unknown; not probed' };

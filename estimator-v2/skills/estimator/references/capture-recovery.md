@@ -1,5 +1,7 @@
 # Targeted capture recovery
 
+Missing rendered parts inside an identifiable component are nonblocking for every component type. Capture as-is, retain supported detections with compact gaps and continue reports/estimates. Do not invoke recovery, repeat a model call or ask the user solely for a missing image/text/icon. Entirely invisible components remain unverified; analyse other visible content. Screenshot-access failures and obstructing consent/popups remain genuine blockers.
+
 After workers terminate and the batch is settled, create a separate recover-capture job for one selected representative URL. Do not mix ordinary settlement with browser investigation. Set reason failed, obstructed or lazy-incomplete; include a concise diagnosis from the named finding/Visual Analysis receipt, not a guessed CSS fix.
 
 The supported command uses existing browser helpers, serial request pacing, desktop viewport and consent/popup preparation. Bounded incremental scrolling permits real lazy images/reveal behavior. It does not fake styles or remove normal content. Candidate capture is staged before publication; previous evidence and analysis remain under capture-recovery/. Failed recovery keeps the old source. One recovery attempt is allowed for a source and its recovered revision; safety stops are never deleted automatically.

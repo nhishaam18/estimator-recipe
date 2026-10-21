@@ -4,6 +4,9 @@ export function assessQuality(data) {
     const add = (code, capture, details, action = 'review-evidence') => findings.push({ code, captureId: capture?.id ?? null,
         url: capture?.url ?? null, viewport: capture?.viewport ?? null, action, requestIds: capture?.nativeAnalysis?.requestIds ?? [], ...details });
     for (const capture of data.captures) {
+        for (const d of data.detections.filter(d => d.captureId === capture.id && d.gaps?.length))
+            add('incomplete-component-render', capture, { detectionId: d.id, sourceId: d.sourceId, name: d.name, parts: d.gaps,
+                reason: 'Identifiable component retained; listed parts did not fully render. Missing appearance is unverified; no automatic recapture or model retry.' });
         for (const item of (data.annotationItems??[]).filter(a=>a.captureId===capture.id && a.kind==='component' && a.annotationOnly && !data.occurrences.some(o=>o.captureId===capture.id && o.selector===a.selector))) {
             add('unmodeled-composite-boundary',capture,{annotationId:item.id,selector:item.selector,name:item.name,box:item.box,
                 reason:'A DOM-backed composite item is annotated but missing from the implementation inventory. Inspect its screenshot and DOM, then add a supported native detection or explain why it remains an owned part; do not silently promote it to a CMS type.'},'reanalyse-tile');

@@ -34,6 +34,14 @@ async function submit(run, req, value = reply(), metadata) {
     return importDetection(run.id, req.id, file, metadata);
 }
 
+test('partial-render component imports complete normally and retain nonblocking gaps without another packet',async t=>{
+ const {run,slug}=await fixture(t,{height:100});const req=(await prepareDetection(run.id)).requests[0];
+ const value=reply('Identifiable banner');value.components[0].gaps=['image','icon'];value.components[0].contains=['title','image','icon'];
+ const imported=await submit(run,req,value);assert.equal(imported.pageComplete,true);assert.equal(imported.reviewRequired,false);assert.equal(imported.pending,0);
+ const merged=await loadLlm(run.id,'desktop',slug);assert.equal(merged.components.length,1);assert.deepEqual(merged.components[0].gaps,['image','icon']);assert.match(merged.warnings.join('\n'),/Incomplete render \(nonblocking\)/);
+ assert.equal((await prepareDetection(run.id)).status,'complete');assert.equal((await prepareDetection(run.id)).requests.length,0);
+});
+
 test('native requests merge overlapping tiles independently across viewports and preserve raw results', async t => {
     const { run, slug } = await fixture(t, { viewports: ['desktop'] });
     const before = await prepareDetection(run.id);

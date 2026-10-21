@@ -1,5 +1,7 @@
 # Consolidation and implementation estimates
 
+An identifiable component with nonblocking rendering gaps remains in the unique list and estimate. Record uncertainty for its unverified parts; do not request recapture or another model pass solely for missing images/text/icons. Existing source-bound report evidence, parent/child exclusions and unique-count rules still apply.
+
 Follow [context budget](context-budget.md). Read each native prompt/request once. Process relevant component reports in small batches and save draft decisions/completed keys. After resume reopen missing or ambiguous evidence, not completed reports. Compact execution preserves full component/child/style coverage.
 
 Consolidation sends no HTTP request. consolidate saves consolidation/request.json and prompt.txt. Read them with Kajoo's model; reply with the exact requestId and groups of existing temporary IDs, name and reason. Only same-level equivalent units may group. Scripts reject stale inventory, duplicate/unknown IDs, mixed implementation types and known parent/child merges. Imported groups retain original source keys and aliases. Rebuild report after imports so family names and links match. reset-merges retains manual groups. Native consolidation is text-based; consult saved component reports when ambiguous and keep differences separate. It does not establish visual equivalence.

@@ -166,6 +166,7 @@ export function renderReadableFamily(family, data, md) {
   const gaps = new Set(['Semantic field names, CMS mapping, requiredness, localization and shared content policy require review.', 'Painted visibility, clipping, legibility and actual per-glyph fonts remain unverified.']);
   for (const warning of data.scope?.warnings ?? []) gaps.add(warning);
   for (const occurrence of occurrences) {
+      if (occurrence.gaps?.length) gaps.add(`Incomplete render (nonblocking): ${occurrence.name} — ${occurrence.gaps.join(', ')}. Component retained; missing appearance is unverified.`);
     for (const warning of occurrence.modelProposal?.unknowns ?? []) gaps.add(warning);
     for (const field of occurrence.modelProposal?.fields ?? []) for (const warning of field.unknowns ?? []) gaps.add(warning);
     const capture = (data.captures ?? []).find(c => c.id === occurrence.captureId);

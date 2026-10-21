@@ -168,6 +168,7 @@ async function finishPage(run, requests) {
     const checked = validateImageComponents(mergeTiles(parsed, first.page.height, first.page.width), rects);
     for (const c of checked.components) c.reusableId = null;
     warnings.push(...checked.findings.map(f => `Image validation (${f.decision}): ${f.name} [${f.componentId}] in ${f.imageSelector}: ${f.reason}`));
+    warnings.push(...checked.components.filter(c => c.gaps?.length).map(c => `Incomplete render (nonblocking): ${c.name} [${c.id}] — ${c.gaps.join(', ')}; component retained, missing appearance unverified.`));
     const models = [...new Set(imports.map(i => i.metadata.model ?? 'kajoo-agent-configured'))];
     await writeJson(llmFile(run.id, first.viewport, first.slug), {
         url: first.url, viewport: first.viewport, generatedAt: new Date().toISOString(), model: models.length === 1 ? models[0] : 'kajoo-agent-configured',

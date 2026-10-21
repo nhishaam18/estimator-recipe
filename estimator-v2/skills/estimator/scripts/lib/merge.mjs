@@ -65,6 +65,7 @@ export function parseTile(resp, tile, mode, pageWidth, warnings) {
                 reusableId: typeof it.reusable_id === 'string' && it.reusable_id !== 'null' ? it.reusable_id : null,
                 repeated: it.repeated === true,
                 contains: Array.isArray(it.contains) ? it.contains.filter((c) => typeof c === 'string').slice(0, 12) : [],
+                ...(it.gaps?.length ? {gaps: [...new Set(it.gaps)]} : {}),
             },
         });
     });
@@ -86,6 +87,7 @@ export function mergeTiles(perTile, pageHeight, pageWidth) {
                 target.comp.reusable ||= e.comp.reusable;
                 target.comp.reusableId ??= e.comp.reusableId;
                 target.comp.contains = [...new Set([...target.comp.contains, ...e.comp.contains])];
+                if (target.comp.gaps?.length || e.comp.gaps?.length) target.comp.gaps = [...new Set([...(target.comp.gaps ?? []), ...(e.comp.gaps ?? [])])];
                 remap.set(key, target.key);
             }
             else {

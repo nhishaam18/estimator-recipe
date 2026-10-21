@@ -15,6 +15,12 @@ function fixture() {
   };
 }
 
+test('incomplete component stays in the handoff inventory and readable report with its missing parts',()=>{
+ const input=fixture();input.captures[0].components.find(c=>c.id==='c').gaps=['image','icon'];
+ const out=assembleHandoff(input),card=out.occurrences.find(o=>o.name==='Card');assert.deepEqual(card.gaps,['image','icon']);assert.equal(out.families.filter(f=>f.name==='Card').length,1);
+ const report=renderFamily(out.families.find(f=>f.id===card.familyId),out).replaceAll('\\','');assert.match(report,/Incomplete render \(nonblocking\): Card/);assert.match(report,/image, icon/);assert.match(report,/missing appearance is unverified/);
+});
+
 test('hidden consent remnants and tracking images do not become unowned visible evidence', () => {
   const input=fixture(),c=input.captures[0];
   c.html+='<div style="display:none !important"><p>Cookie notice</p><a href="/accept">Accept all</a><img src="/pixel"></div><img style="display:none" src="/beacon"><div style="visibility:hidden"><p>Hidden copy</p><p style="visibility:visible">Visible override</p></div>';
