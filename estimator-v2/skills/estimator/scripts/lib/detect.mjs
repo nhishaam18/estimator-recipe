@@ -110,8 +110,28 @@ async function validImport(runId, request) {
     const raw = await readFile(rawFile);
     if (hash(raw) !== saved.resultHash) throw new Error(`Stored result was changed for ${request.id}`);
     validateResult(JSON.parse(raw.toString('utf8')));
-    validateNativeResult(JSON.parse(raw.toString('utf8')), request);
-    return { ...saved, result: JSON.parse(raw.toString('utf8')) };
+    let result = JSON.parse(raw.toString('utf8'));
+    if (saved.binding) {
+        await verifyBinding(runId, request, saved.binding);
+        result = bindInspection(result, request);
+    }
+    validateNativeResult(result, request);
+    return { ...saved, result };
+}
+
+function bindInspection(result, request) {
+    return { ...result, inspection: { ...result.inspection, imageHash: request.imageHash, viewport: request.viewport, tileIndex: request.tile.index, requestId: request.id } };
+}
+
+async function verifyBinding(runId, request, binding, resultFile) {
+    if (!/^[a-f0-9-]{36}$/.test(binding.batchId ?? '') || !binding.jobId) throw new Error('Invalid packet binding: batchId/jobId required');
+    const batch = await readJson(inRun(runId, `visual-batches/${binding.batchId}.json`));
+    const item = batch.items.find(i => i.requestId === request.id);
+    const assigned = `analysis-results/${request.id}/draft-${binding.batchId}.json`;
+    if (batch.id !== binding.batchId || !item || item.jobId !== binding.jobId || item.platformStatus !== 'completed'
+        || item.resultFile !== assigned || item.image !== request.image || item.promptFile !== request.promptFile
+        || (resultFile && path.resolve(resultFile) !== path.resolve(inRun(runId, assigned))))
+        throw new Error('Invalid packet binding: completed job and exact assigned result path must match request');
 }
 
 export async function prepareDetection(runId) {
@@ -181,7 +201,7 @@ async function finishPage(run, requests) {
     return true;
 }
 
-export async function importDetection(runId, requestId, resultFile, metadata = {}, { replace = false } = {}) {
+export async function importDetection(runId, requestId, resultFile, metadata = {}, { replace = false, binding } = {}) {
     if (!/^[a-f0-9]{64}$/.test(requestId)) throw new Error('Invalid analysis request id');
     for (const field of ['model', 'traceId']) if (metadata[field] !== undefined && (typeof metadata[field] !== 'string' || !metadata[field].trim() || metadata[field].length > 500)) throw new Error(`Invalid ${field} metadata`);
     const run = await getRun(runId);
@@ -198,6 +218,10 @@ export async function importDetection(runId, requestId, resultFile, metadata = {
     let result;
     try { result = JSON.parse(raw.toString('utf8')); } catch { throw new Error('Analysis result must be raw JSON'); }
     validateResult(result);
+    if (binding) {
+        await verifyBinding(runId, request, binding, resultFile);
+        result = bindInspection(result, request);
+    }
     validateNativeResult(result, request);
     const resultHash = hash(raw);
     const previous = await validImport(runId, request);
@@ -211,7 +235,7 @@ export async function importDetection(runId, requestId, resultFile, metadata = {
         // Keep the established response.json convenience path; validity always uses rawFile.
         await writeFile(inRun(runId, `analysis-results/${requestId}/response.json`), raw);
         const previousResults = previous ? [...(previous.previousResults ?? []), { resultHash: previous.resultHash, rawFile: previous.rawFile, metadata: previous.metadata, importedAt: previous.importedAt }] : [];
-        await writeJson(inRun(runId, `analysis-results/${requestId}/import.json`), { requestHash: jsonHash(request), resultHash, rawFile, previousResults, revision: previousResults.length, metadata: { ...(metadata.model ? { model: metadata.model } : {}), ...(metadata.traceId ? { traceId: metadata.traceId } : {}) }, importedAt: new Date().toISOString() });
+        await writeJson(inRun(runId, `analysis-results/${requestId}/import.json`), { requestHash: jsonHash(request), resultHash, rawFile, ...(binding ? { binding: { batchId: binding.batchId, jobId: binding.jobId } } : {}), previousResults, revision: previousResults.length, metadata: { ...(metadata.model ? { model: metadata.model } : {}), ...(metadata.traceId ? { traceId: metadata.traceId } : {}) }, importedAt: new Date().toISOString() });
     }
     const pageComplete = await finishPage(run, current);
     const prepared = await prepareDetection(runId);

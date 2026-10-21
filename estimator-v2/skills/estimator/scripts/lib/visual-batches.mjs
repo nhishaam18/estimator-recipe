@@ -81,7 +81,8 @@ export async function settleBatch(id,batchId,outcomes){
    item.jobId=o.jobId??item.jobId;item.platformStatus=o.status;
    if(['running','unknown'].includes(o.status)){item.state=o.status;}
    else if(o.status==='completed'){
-    try{const imported=await importDetection(id,item.requestId,inRun(id,item.resultFile),{}, {replace:item.replace});item.state='imported';item.componentCount=imported.componentCount;item.emptyResult=imported.reviewRequired;}
+    await writeJson(inRun(id,`visual-batches/${batchId}.json`),batch);
+    try{const imported=await importDetection(id,item.requestId,inRun(id,item.resultFile),{}, {replace:item.replace,binding:{batchId,jobId:item.jobId}});item.state='imported';item.componentCount=imported.componentCount;item.emptyResult=imported.reviewRequired;}
     catch(error){item.state='failed';item.errorCategory='validation';item.errorFile=`visual-batches/${batchId}/errors/${item.requestId}.json`;await writeJson(inRun(id,item.errorFile),{category:'validation',reason:error.message,requestId:item.requestId,resultFile:item.resultFile});}
    }else{
     item.state=o.status;item.errorFile=`visual-batches/${batchId}/errors/${item.requestId}.json`;

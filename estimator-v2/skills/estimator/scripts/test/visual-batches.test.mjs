@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {createRun,inRun,writeJson,readJson,updateRun} from '../lib/store.mjs';
-import {prepareDetection} from '../lib/detect.mjs';
+import {prepareDetection,importDetection} from '../lib/detect.mjs';
 import {reserveBatch,settleBatch} from '../lib/visual-batches.mjs';
 const cli=fileURLToPath(new URL('../cest.mjs',import.meta.url));
 const call=args=>new Promise((resolve,reject)=>{const p=spawn(process.execPath,[cli,...args],{env:process.env});let out='',err='';p.stdout.on('data',b=>out+=b);p.stderr.on('data',b=>err+=b);p.on('error',reject);p.on('close',code=>resolve({code,json:JSON.parse(out.trim().split('\n').at(-1)),err}));});
@@ -28,6 +28,34 @@ async function result(run,packet){
  await writeJson(inRun(run.id,packet.resultFile),value);
 }
 const outcomes=(batch,status='completed')=>batch.packets.map((p,i)=>({requestId:p.requestId,jobId:`job-${batch.batchId}-${i}`,status}));
+
+test('reserved jobs bind identifiers without model transcription and preserve raw evidence',async t=>{
+ const run=await fixture(t),batch=await reserveBatch(run.id);
+ for(const [i,p] of batch.packets.entries()){
+  await result(run,p);const f=inRun(run.id,p.resultFile),v=await readJson(f);
+  v.inspection=i?{summary:v.inspection.summary}:{...v.inspection,imageHash:'hash-typo'};
+  await writeJson(f,v);
+ }
+ const settled=await settleBatch(run.id,batch.batchId,outcomes(batch));assert.equal(settled.imported,2);
+ for(const p of batch.packets){
+  const saved=await readJson(inRun(run.id,`analysis-results/${p.requestId}/import.json`));
+  assert.equal(saved.binding.batchId,batch.batchId);
+  assert.deepEqual(await readJson(inRun(run.id,saved.rawFile)),await readJson(inRun(run.id,p.resultFile)));
+ }
+ assert.equal((await prepareDetection(run.id)).pending,1,'bound imports survive cache verification');
+ const p=batch.packets[0],binding={batchId:batch.batchId,jobId:outcomes(batch)[0].jobId};
+ await assert.rejects(importDetection(run.id,p.requestId,inRun(run.id,batch.packets[1].resultFile),{}, {binding}),/packet binding/);
+ await assert.rejects(importDetection(run.id,p.requestId,inRun(run.id,p.resultFile),{}, {binding:{...binding,jobId:'wrong-job'}}),/packet binding/);
+ await fs.writeFile(inRun(run.id,p.image),'altered');
+ await assert.rejects(importDetection(run.id,p.requestId,inRun(run.id,p.resultFile),{}, {binding}),/image or prompt changed/);
+});
+
+test('script binding still rejects absent visual descriptions',async t=>{
+ const run=await fixture(t),batch=await reserveBatch(run.id),p=batch.packets[0];await result(run,p);
+ const v=await readJson(inRun(run.id,p.resultFile));v.inspection={};await writeJson(inRun(run.id,p.resultFile),v);
+ const settled=await settleBatch(run.id,batch.batchId,[outcomes(batch)[0]]);assert.equal(settled.failed,1);
+ const error=await readJson(inRun(run.id,settled.packets[0].errorFile));assert.match(error.reason,/summary/);
+});
 
 test('two distinct same-page tiles reserve unique output paths and reuse active assignments',async t=>{
  const run=await fixture(t),batch=await reserveBatch(run.id);
