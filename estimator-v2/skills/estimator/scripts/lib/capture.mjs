@@ -144,6 +144,8 @@ export function collectRects() {
 export async function captureOne(browser, entry, viewport, runId, opts = {}) {
     if(viewport!=='desktop')throw new Error('Estimator 2.0.0 supports desktop only');
     const shotWanted = opts.shot !== false;
+    // Recovery writes a separate candidate revision before publishing any live evidence.
+    const artifact = rel => opts.outputPrefix ? `${opts.outputPrefix}/${rel}` : rel;
     const size = VIEWPORT_SIZES[viewport];
     const settings=opts.settings??(await getRun(runId)).settings;
     const ownedContext=!opts.context;
@@ -185,7 +187,7 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
         let consent = await dismissConsent(page);
         let lazy = { images: 0, pending: 0 };
         if (shotWanted)
-            lazy = await loadLazyContent(page);
+            lazy = await loadLazyContent(page, opts.lazyOptions);
         else
             await page.waitForTimeout(900);
         // banners that show up after scrolling or a delay
@@ -199,7 +201,7 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
             await waitForFonts();
         if(!await waitForVisualAssets(page,requestPolicy,shotWanted))readinessWarnings.push('Visual asset readiness limit reached; stylesheet/background/image/font content may be incomplete');
         const finalConsent=await dismissConsent(page);if(finalConsent!=='none')consent=finalConsent;
-        const consentCheck=await inspectConsent(page),popupCheck=await dismissObstructingPopups(page);state.preparation={consent,consentCheck,popupCheck};
+        const consentCheck=await inspectConsent(page),popupCheck=await dismissObstructingPopups(page);state.preparation={consent,consentCheck,popupCheck,lazy};
         if(popupCheck.status!=='clear')throw new Error('Recognized popup still obstructs capture; safe dismissal unavailable');
         if(consentCheck.status!=='clear')throw new Error('Consent/popup still obstructs the page; capture rejected');
         const status = resp?.status() ?? 0;
@@ -208,7 +210,7 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
             throw new Error(`Not an HTML page (${ctype.split(';')[0]})`);
         if (!(await page.evaluate(() => !!document.documentElement && !!document.body).catch(() => false)))
             throw new Error('The page has no HTML content to scan');
-        const shotRel = `shots/${viewport}/${entry.slug}.png`;
+        const shotRel = artifact(`shots/${viewport}/${entry.slug}.png`);
         phase='evidence';
         let dims;
         if (shotWanted) {
@@ -222,19 +224,21 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
         }
         const html = await page.content();
         const rects = await page.evaluate(collectRects);
-        await mkdir(path.dirname(inRun(runId, `html/${viewport}/${entry.slug}.html`)), { recursive: true });
-        await writeFile(inRun(runId, `html/${viewport}/${entry.slug}.html`), html, 'utf8');
-        await writeJson(inRun(runId, `rects/${viewport}/${entry.slug}.json`), rects);
+        await mkdir(path.dirname(inRun(runId, artifact(`html/${viewport}/${entry.slug}.html`))), { recursive: true });
+        await writeFile(inRun(runId, artifact(`html/${viewport}/${entry.slug}.html`)), html, 'utf8');
+        await writeJson(inRun(runId, artifact(`rects/${viewport}/${entry.slug}.json`)), rects);
         const scan = scanHtml(html, entry.url);
         const bySelector = new Map(rects.map((r) => [r.s, r]));
         for (const c of scan.components) {
             const r = bySelector.get(c.selector);
             c.box = r ? { x: r.x, y: r.y, w: r.w, h: r.h } : null;
         }
-        await writeJson(inRun(runId, `scan/${viewport}/${entry.slug}.json`), scan);
+        await writeJson(inRun(runId, artifact(`scan/${viewport}/${entry.slug}.json`)), scan);
         const flags = [...(consent === 'none' ? [] : [`cookie banner: ${consent}`]),...readinessWarnings,...(requestPolicy?.snapshot().warnings??[])];
         if (lazy.pending)
             flags.push(`${lazy.pending} of ${lazy.images} images did not finish loading`);
+        if (shotWanted && lazy.reachedEnd === false)
+            flags.push('Lazy content traversal limit reached; below-the-fold content may be incomplete');
         const [shell, why] = looksLikeShell(html);
         if (shell)
             flags.push(`empty shell: ${why}`);
@@ -242,7 +246,7 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
             flags.push('bot protection page');
         if (shotWanted && assetObserver) {
             try {
-                const evidencePath = `analysis/${viewport}/${entry.slug}.json`;
+                const evidencePath = artifact(`analysis/${viewport}/${entry.slug}.json`);
                 const evidence = await collectWebsiteEvidence(page, { requestedUrl: entry.url, viewport, consent, screenshot: shotRel,
                     rects, scan, network: assetObserver.snapshot(), warnings: [...flags, ...readinessWarnings] });
                 evidence.browserNetwork=requestPolicy?.snapshot()??null; evidence.preparation=state.preparation;
@@ -271,7 +275,7 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
         if(requestPolicy){state.network=requestPolicy.snapshot();await requestPolicy.dispose();}
         if(ownedContext)await ctx.close();
     }
-    await updateRun(runId, (run) => {
+    if(opts.publishState !== false) await updateRun(runId, (run) => {
         const p = run.pages.find((x) => x.url === entry.url);
         if (p)
             p.viewports[viewport] = state;
@@ -281,13 +285,13 @@ export async function captureOne(browser, entry, viewport, runId, opts = {}) {
 
 /** A context belongs to this stage/run only. Tabs are serial; storage/consent can
  * be reused for same-site pages, never across unrelated runs or workspaces. */
-export async function captureSequence(browser,run,tasks,job,{shot=true}={}) {
+export async function captureSequence(browser,run,tasks,job,{shot=true,captureOptions={}}={}) {
     const stopped=await readJson(inRun(run.id,'browser-stop.json'),null);
     if(stopped){job.stopReason=stopped.reason;job.cancelRequested=true;logJob(job,`Browser workload remains stopped: ${stopped.reason}. Inspect the cause before explicit --retry-browser.`);return;}
     const session=await browserSession(browser),context=session.context;
     const interval=bounded(run.settings.urlIntervalMs,1000,250,30000);
     const failureLimit=bounded(run.settings.maxConsecutivePageFailures,2,1,2);
-    let failures=0;
+    let failures=0;const states=[];
     logJob(job,`Browser safety: one shared stage context, one page at a time, ${interval}ms between URLs; no automatic retry sweep`);
     try{
         for(const [index,{p,v}]of tasks.entries()){
@@ -295,7 +299,8 @@ export async function captureSequence(browser,run,tasks,job,{shot=true}={}) {
             if(index){const remaining=job.deadline?Math.max(0,job.deadline-Date.now()):interval;await new Promise(r=>setTimeout(r,Math.min(interval,remaining)));}
             if(outOfTime(job))break;
             logJob(job,`${shot?'Capturing':'Scanning'} ${p.url} (${v})`);
-            const state=await captureOne(browser,p,v,run.id,{shot,context,newPage:()=>session.newPage(),settings:run.settings,deadline:job.deadline});
+            const state=await captureOne(browser,p,v,run.id,{...captureOptions,shot,context,newPage:()=>session.newPage(),settings:run.settings,deadline:job.deadline});
+            states.push(state);
             job.done++;
             outOfTime(job);
             failures=state.status==='failed'?failures+1:0;
@@ -305,6 +310,7 @@ export async function captureSequence(browser,run,tasks,job,{shot=true}={}) {
             }
         }
     }finally{await context.close();if(job.stopReason)await writeJson(inRun(run.id,'browser-stop.json'),{version:1,at:new Date().toISOString(),reason:job.stopReason,completed:job.done,total:tasks.length});}
+    return states;
 }
 export async function captureRun(runId, job, only) {
     const run = await getRun(runId);

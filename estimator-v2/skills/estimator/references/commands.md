@@ -7,6 +7,9 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Operation | Command/options |
 | --- | --- |
 | Writable setup | setup --workspace /workspace |
+| First-use copy/install/verify with reusable receipts | bootstrap --workspace /workspace |
+| Routine bounded assignment | job --file <absolute immutable job.json> |
+| One-route recovery after settlement | recover-capture --run <folder> --url <selected route> --reason failed\|obstructed\|lazy-incomplete --diagnosis <observed evidence> |
 | Dependency/browser check | verify |
 | Required Firecrawl discovery | plan --url <seed> --discovery-file <saved JSON> |
 | User quotas | select --plan <folder> --quotas-file <JSON keyed by group ID> |

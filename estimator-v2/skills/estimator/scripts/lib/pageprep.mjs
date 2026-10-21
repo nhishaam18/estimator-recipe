@@ -162,20 +162,27 @@ export async function dismissObstructingPopups(page) {
     }
     return {status:remaining.length?'blocked':'clear',dismissed,remaining,basis:'bounded recognized marketing/location dialogs; unrecognized overlays require image review'};
 }
-export async function loadLazyContent(page, maxSteps = 60) {
+export async function loadLazyContent(page, options = {}) {
+    if (typeof options === 'number') options = { maxSteps: options };
+    const maxSteps = Math.max(1, Math.min(80, Number.isFinite(options.maxSteps) ? Math.floor(options.maxSteps) : 60));
+    const maxDurationMs = Math.max(500, Math.min(20000, Number.isFinite(options.maxDurationMs) ? options.maxDurationMs : 20000));
+    const deadline = Date.now() + maxDurationMs;
     await page
         .evaluate(() => {
         document.querySelectorAll('img[loading="lazy"], iframe[loading="lazy"]').forEach((el) => el.setAttribute('loading', 'eager'));
     })
         .catch(() => { });
-    let last = -1;
-    for (let i = 0; i < maxSteps; i++) {
+    let last = -1, reachedEnd = false, steps = 0;
+    for (let i = 0; i < maxSteps && Date.now() < deadline; i++) {
         const height = await page.evaluate(() => document.documentElement?.scrollHeight ?? 0);
         await page.evaluate(() => window.scrollBy(0, Math.round(window.innerHeight * 0.7)));
         await page.waitForTimeout(220);
+        steps++;
         const pos = await page.evaluate(() => window.scrollY + window.innerHeight).catch(() => 0);
-        if (pos >= height - 2 && height === last)
+        if (pos >= height - 2 && height === last) {
+            reachedEnd = true;
             break;
+        }
         last = height;
     }
     // lazy-load libraries keep the real URL in a data attribute until the image nears the viewport
@@ -200,17 +207,21 @@ export async function loadLazyContent(page, maxSteps = 60) {
     })
         .catch(() => { });
     const stats = await page
-        .evaluate(async () => {
+        .evaluate(async deadline => {
         const imgs = Array.from(document.images);
-        const deadline = Date.now() + 15000;
         const pending = () => imgs.filter((i) => !i.complete);
         while (pending().length && Date.now() < deadline)
             await new Promise((r) => setTimeout(r, 250));
-        await Promise.all(imgs.filter((i) => i.complete && i.naturalWidth > 0).map((i) => i.decode().catch(() => { })));
-        return { images: imgs.length, pending: pending().length };
-    })
-        .catch(() => ({ images: 0, pending: 0 }));
+        let timer;
+        try {
+            await Promise.race([Promise.all(imgs.filter((i) => i.complete && i.naturalWidth > 0).map((i) => i.decode().catch(() => { }))),
+                new Promise(resolve => { timer = setTimeout(resolve, Math.max(0, deadline - Date.now())); })]);
+        } finally { clearTimeout(timer); }
+        return { images: imgs.length, pending: pending().length, broken: imgs.filter(i => i.complete && !i.naturalWidth).length };
+    }, deadline)
+        .catch(() => ({ images: 0, pending: 0, inspectionFailed: true }));
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(400);
-    return stats;
+    return { ...stats, steps, reachedEnd, timedOut: Date.now() >= deadline,
+        basis: 'bounded viewport scrolling and existing lazy image URLs; no reveal classes, opacity, animation or authored content changed' };
 }

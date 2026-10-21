@@ -1,5 +1,5 @@
 {
-  "name": "Estimator 2.1.0",
-  "version": "2.1.0",
-  "description": "Desktop estimation coordinated by Orchestrator with bounded Developer execution and batches of two isolated Visual Analysis jobs. Firecrawl sampling, component/style reports and Sitecore-default estimates; no paired-region second pass, app, provider key, phases or tasks."
+  "name": "Estimator 2.2.0",
+  "version": "2.2.0",
+  "description": "Desktop estimation with durable script-executed Developer jobs, reusable verified setup and two isolated Visual Analysis workers. Firecrawl sampling, source-bound annotations/component/style reports, bounded capture recovery and Sitecore-default estimates. No app, provider key, phases, tasks or implementation."
 }

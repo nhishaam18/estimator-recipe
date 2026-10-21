@@ -1,14 +1,11 @@
-# Setup
+# Setup once, then reuse
 
-Read the advertised SKILL.md first using native `read`; Kajoo stages its registered supporting files. Resolve `<skill>` from that exact path, retaining the full workspace or agent scope. Read references with `read`, write run configuration with `write`/`edit`, and invoke packaged Node scripts with native `bash`. Installed skills are read-only; never install dependencies or store evidence under `/mnt/skills`.
+Read the advertised SKILL.md first using native read to stage resources. Preserve its exact /mnt/skills/workspace/... or /mnt/skills/agents/<id>/... scope. Skills are read-only; invoke trusted Node scripts with native bash.
 
-1. From the staged skill, run with native bash: node <skill>/scripts/cest.mjs setup --workspace /workspace
-2. Use the returned writable runtime (/workspace/estimator-runtime/estimator). In runtime/scripts run npm ci --ignore-scripts.
-3. Run node <runtime>/scripts/cest.mjs verify using the returned absolute runtime path. It checks Sharp and launches the preinstalled Playwright/Chromium pair. Do not install browser packages or repair caches.
-4. Set CEST_RUNS_DIR=/workspace/estimator in the command environment for all operations. setup returns this path; it does not modify subsequent shell environments.
-5. Developer needs native file/command tools and Firecrawl; Orchestrator needs kajoo/run-agent; Visual Analysis needs native image-reading/file-writing tools and its focused skill. verify does not test child-agent availability or model image access. No application, launch entry or credential file is created.
+First use: `node <skill>/scripts/cest.mjs bootstrap --workspace /workspace`.
 
-Only run trusted packaged scripts. Runtime dependencies are Cheerio and Sharp plus their locked dependencies. Keep the full relative package layout when transferring it.
+Bootstrap materializes /workspace/estimator-runtime/estimator, installs locked dependencies via npm ci --ignore-scripts, verifies Node/Sharp and preinstalled Playwright/matching Chromium, and writes atomic receipts under /workspace/estimator-runtime/.bootstrap/. It never downloads browsers or calls a model. Source, lock, Node, installed dependency and browser identities bind verification. Matching receipts avoid copying/installing/browser launch. Image access by the model is not tested.
 
-Save returned runtime and run paths in the run evidence and a compact chat/artifact reference. No project records are required. On resume reuse the saved runtime/run paths and verified compatible dependencies. Do not repeatedly copy resources, install packages or initialize a new run merely because the chat resumed. When updated script resources are required, verify no process is active, refresh the writable runtime deliberately, verify it and keep run evidence separate.
+Save runtime, runsDir, receiptPath and verificationReceiptPath immediately before other calls. Fresh jobs use the returned runtime directly; do not bootstrap simply because their chat is empty. Set CEST_RUNS_DIR to returned runsDir for low-level plan/select/init; absolute runDir jobs resolve their own run root. No app/server/provider key is created.
 
+Failures return a saved blocked receipt/log path. No fallback browser installation, repeated npm commands or guessed paths. Reconcile locks before recovery. A deliberately updated recipe may bootstrap again when idle; source hashing refreshes runtime without removing run evidence. Legacy setup is copy-only and verify is a diagnostic probe, not the normal first-use sequence.

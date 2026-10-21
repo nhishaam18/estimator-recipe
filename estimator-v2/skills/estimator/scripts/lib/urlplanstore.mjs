@@ -132,7 +132,7 @@ export async function persistSelection(folder, quotasFile) {
     return { plan, selection, resumed: false };
   });
 }
-export const planSummary = plan => ({ planId: plan.id, counts: plan.counts, groups: plan.groups.map(({ id, pattern, label, count, suggestedCount, examples }) => ({ id, pattern, label, count, suggestedCount, examples: examples.slice(0, 3) })), warnings: plan.warnings });
+export const planSummary = plan => ({ planId: plan.id, planFingerprint: plan.fingerprint, counts: plan.counts, groups: plan.groups.map(({ id, pattern, label, count, suggestedCount, examples }) => ({ id, pattern, label, count, suggestedCount, examples: examples.slice(0, 3) })), warnings: plan.warnings });
 
 export async function urlGroupAccounting(run, { persist = false } = {}) {
   const { readJson, inRun, writeJson } = await import('./store.mjs');

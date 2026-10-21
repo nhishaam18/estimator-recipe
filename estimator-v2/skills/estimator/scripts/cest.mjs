@@ -14,10 +14,12 @@ for(let i=0;i<argv.length;i++){
 }
 if(process.env.WCD_RUNS_DIR)process.env.CEST_RUNS_DIR=process.env.WCD_RUNS_DIR;
 if(args['runs-dir'])process.env.CEST_RUNS_DIR=path.resolve(args['runs-dir']);
+if(args['plans-dir'])process.env.CEST_PLAN_DIR=path.resolve(args['plans-dir']);
 const print=value=>process.stdout.write(JSON.stringify(value)+'\n');
 const help={commands:['setup --workspace <writable folder>','verify','init --selection <approved Firecrawl plan folder> [--name <name>]','scan | group | capture | detect | report --run <ID or absolute run folder>','import-result --run <ID or folder> --request <request ID> --result-file <saved JSON> [--model <actual Kajoo model name>] [--trace-id <trace>]','all --run <ID or folder> [--through group|capture|detect|report] [--minutes 4]','plan --url <seed> --discovery-file <saved Firecrawl JSON>','select --plan <folder> --quotas-file <user choices JSON>','consolidate | estimate --run <folder>','import-consolidation | import-estimates --run <folder> --result-file <JSON>','merge --run <folder> --keys-file <JSON array> --name <label>','reset-merges --run <folder>','status --run <ID or folder>'],scope:'The Kajoo skill always obtains a saved Firecrawl Map response, groups it and freezes approved sample quantities; scripts process the selected URLs and prepare/import screenshot analysis; the configured Kajoo agent performs model reasoning. No direct model API, provider key, CMS mutation or code generation.'};
 help.commands.push('next --run <ID or folder> (compact saved checkpoint and one next packet)');
 help.commands.push('batch --run <folder> [--retry-request <id> --retry-kind transient|correction] [--correction-request <id>]', 'settle-batch --run <folder> --batch <id> --outcomes-file <JSON>', 'assemble-estimates --run <folder> --parts-file <JSON array of run-relative fragment paths>');
+help.commands.push('bootstrap --workspace <folder> (copy/install/verify once with persistent receipts)','job --file <absolute immutable job.json>','recover-capture --run <folder> --url <selected route> --reason failed|obstructed|lazy-incomplete [--diagnosis <observed evidence>]');
 async function setup(){
  if(typeof args.workspace!=='string')throw new Error('setup requires --workspace <writable folder>');
  const workspace=path.resolve(args.workspace),runtime=path.join(workspace,'estimator-runtime','estimator');
@@ -29,6 +31,15 @@ async function setup(){
 async function main(){
  if(!command||command==='help'){print(help);return;}
  if(command==='setup'){print(await setup());return;}
+ if(command==='bootstrap'){
+  if(typeof args.workspace!=='string')throw new Error('bootstrap requires --workspace');
+  try{print(await (await import('./lib/bootstrap.mjs')).bootstrap({skill,workspace:path.resolve(args.workspace)}));}
+  catch(error){print(error.receipt??{status:'blocked',reason:error.message,receiptFile:error.receiptPath,logPath:error.logPath});process.exitCode=2;}return;
+ }
+ if(command==='job'){
+  if(typeof args.file!=='string'||!path.isAbsolute(args.file))throw new Error('job requires an absolute --file');
+  print(await (await import('./lib/job-execution.mjs')).executeJob(args.file));return;
+ }
  const {loadSkillSettings}=await import('./lib/config.mjs');
  const store=await import('./lib/store.mjs');
  const {newJob}=await import('./lib/jobs.mjs');
@@ -94,7 +105,7 @@ async function main(){
  }
  if(!batchCommands.includes(command)&&await store.exists(store.inRun(id,'visual-batches/active.json')))throw new Error('Visual batch still reserved; reconcile/settle it before mutating shared run files');
  const stages=['scan','group','capture','detect','report'];
- if(!stages.includes(command)&&command!=='all'&&command!=='import-result'&&!estimateCommands.includes(command)&&!batchCommands.includes(command))throw new Error('Unknown command; use help');
+ if(!stages.includes(command)&&command!=='all'&&command!=='import-result'&&command!=='recover-capture'&&!estimateCommands.includes(command)&&!batchCommands.includes(command))throw new Error('Unknown command; use help');
  const through=typeof args.through==='string'?args.through:'report';if(!stages.includes(through))throw new Error('Invalid --through stage');
  const minutes=Number(args.minutes??4);if(!Number.isFinite(minutes)||minutes<=0)throw new Error('--minutes must be positive');
  const lock=store.inRun(id,'discovery.lock');let handle;
@@ -102,11 +113,15 @@ async function main(){
  catch(e){if(e.code==='EEXIST')throw new Error('Another operation or interrupted lock exists. Check discovery.lock and confirm the owner exited before removing that lock; never run overlapping detection.');throw e;}
  try{
   await fs.rm(store.inRun(id,'execution-error.json'),{force:true});
+  if(command==='recover-capture'){
+   if(typeof args.url!=='string'||typeof args.reason!=='string')throw new Error('recover-capture requires --url and --reason');
+   print(await (await import('./lib/capture-recovery.mjs')).recoverCapture(id,{url:args.url,reason:args.reason,diagnosis:args.diagnosis}));return;
+  }
   if(batchCommands.includes(command)){
    const batches=await import('./lib/visual-batches.mjs');
    if(command==='settle-batch'&&(typeof args.batch!=='string'||typeof args['outcomes-file']!=='string'))throw new Error('settle-batch requires --batch and --outcomes-file');
    if(command==='batch')print(await batches.reserveBatch(id,{retryRequest:args['retry-request'],correctionRequest:args['correction-request'],retryKind:args['retry-kind']??'transient'}));
-   else {const file=path.resolve(args['outcomes-file']);if((await fs.stat(file)).size>64000)throw new Error('Batch outcomes exceed 64 KB');print(await batches.settleBatch(id,args.batch,JSON.parse(await fs.readFile(file,'utf8'))));}
+   else {const file=path.resolve(args['outcomes-file']);if((await fs.stat(file)).size>64000)throw new Error('Batch outcomes exceed 64 KB');const {validateOutcomes}=await import('./lib/job-execution.mjs');print(await batches.settleBatch(id,args.batch,validateOutcomes(JSON.parse(await fs.readFile(file,'utf8')))));}
    return;
   }
   if(estimateCommands.includes(command)){

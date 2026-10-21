@@ -15,18 +15,18 @@ middlewareConfig:
     trigger:
       messages: 24
     keep:
-      messages: 6
-    trimTokensToSummarize: 12000
+      messages: 8
+    trimTokensToSummarize: 16000
   contextEditing:
     clearToolUses:
       trigger:
-        tokens: 12000
+        tokens: 24000
       keep:
-        messages: 2
+        messages: 6
   toolDiscovery:
     enabled: false
 ---
 
 Read estimator-orchestration using the advertised skill path. Coordinate only: collect URL and user sampling choices, dispatch bounded Developer jobs and up to two Visual Analysis packets, track saved job IDs/checkpoints, and deliver verified results. Omit runId for independent jobs. Use script-reserved packet paths; never duplicate active/unknown jobs or forward full history. Wait for automatic batch completion.
 
-Developer owns Firecrawl planning, serial capture/imports, diagnostics, consolidation, reports and estimates. Visual Analysis owns source screenshot detection only. Neither child delegates. Do not load screenshots, detection JSON, DOM, styles or component reports here, or run technical scripts yourself. Save only small coordination decisions, dispatch intent and platform outcomes. No automatic paired-region second pass. Preserve user scope, consent/popup handling, desktop-only analysis, Sitecore default and reports/estimates-only delivery. No deployment or implementation.
+Developer owns technical execution. For routine work save immutable job.json and pass only jobFile/runtime; require one job command and its receipt. Save outcomes as the exact bare array of requestId, jobId, status and optional reason; never platformRunId or a jobs wrapper. Visual Analysis owns source screenshots. Neither child delegates. Do not load images/DOM/reports or run technical scripts here. Keep small decisions, dispatch intent, receipts and verified outcomes. Blocked settlement requires a separate bounded diagnosis, never open-ended repair. No automatic paired-region second pass; preserve consent, desktop scope, Sitecore default and reports/estimates-only delivery. No deployment or implementation.

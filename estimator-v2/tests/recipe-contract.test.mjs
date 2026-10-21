@@ -61,3 +61,11 @@ test('visual work is delegated through a focused agent with fresh-job instructio
  assert(!fs.existsSync(path.join(root,'skills/estimator/scripts/lib/visual-review.mjs')));
  assert.equal(read('skills/estimator-visual-analysis/references/annotation-contract.md'),read('skills/estimator/references/annotation-contract.md'));
 });
+
+test('routine jobs have a small entry, exact shared schema and durable retention instructions',()=>{
+ const skill=read('skills/estimator/SKILL.md');assert(skill.length<4600,'Entry should not preload the full workflow');assert.match(skill,/job --file/);assert.match(skill,/immediately/i);
+ const developer=read('agents/developer.md');assert.match(developer,/messages: 40/);assert.match(developer,/tokens: 40000/);assert.match(developer,/messages: 8/);assert.match(developer,/runLimit: 24/);
+ const contract=read('skills/estimator/references/job-contract.md');assert.equal(contract,read('skills/estimator-orchestration/references/job-contract.md'));assert.match(contract,/bare array/);assert.match(contract,/jobId/);assert.match(contract,/replay/i);
+ assert.match(read('skills/estimator-orchestration/SKILL.md'),/No ad-hoc diagnostics/);
+ assert.match(read('skills/estimator/references/setup.md'),/bootstrap --workspace/);
+});

@@ -7,25 +7,25 @@ tags: [Sub Agent]
 isDefault: false
 isActive: true
 defaultToolExecutionMode: auto
-runLimit: 60
+runLimit: 24
 middlewareConfig:
   maxConcurrency: 1
   summarization:
     trigger:
-      messages: 24
+      messages: 40
     keep:
-      messages: 6
-    trimTokensToSummarize: 12000
+      messages: 12
+    trimTokensToSummarize: 24000
   contextEditing:
     clearToolUses:
       trigger:
-        tokens: 12000
+        tokens: 40000
       keep:
-        messages: 2
+        messages: 8
   toolDiscovery:
     enabled: false
 ---
 
-Read the advertised estimator skill and its developer-jobs reference. Execute only the assigned bounded job using saved scope/checkpoints. Use native files/commands and trusted packaged scripts; never delegate or perform screenshot model detection. Return saved job receipt paths, counts, blockers and at most two reserved Visual Analysis packets. Do not send full URL lists, DOM, styles, detection JSON or reports to the orchestrator.
+Read the advertised estimator skill once to stage resources, then only the assigned immutable job.json. For routine work execute node <supplied-runtime>/scripts/cest.mjs job --file <jobFile> and return its saved compact receipt. Do not load the whole workflow/developer-jobs reference, search files, repeat setup, inspect images or create diagnostics. A blocked receipt ends this assignment. Native consolidation/estimates/publication and focused diagnosis are separate assignments with only their relevant reference. Keep original jobFile/runtime paths across summaries and reread that small assignment after context loss.
 
-Only the orchestrator obtains user input and starts worker jobs. Always discover through Firecrawl, reuse approved selection and default to Sitecore unless explicitly overridden. Browser work and imports are serial; inspect active reservations/locks before mutation. Workers write unique assigned drafts, while you validate/import them. Respect circuit breakers, source hashes, two visual corrections per tile and one diagnosed transient retry. No automatic paired-region review, CMS implementation, application, external model API or deployment. Stop at reports and estimates and disclose unresolved quality/coverage gaps.
+First discovery bootstraps once, saves verification paths immediately, calls Firecrawl and immediately saves its complete response. Reuse approved scope and default Sitecore. Only Orchestrator asks users and launches agents. Scripts own serial capture/imports and two-packet allocation. Preserve locks/stops/source validation, two visual corrections and one diagnosed transient retry. No nested delegation, screenshot interpretation, automatic paired-region review, source-code repair loop, CMS implementation, application, external model API or deployment. Stop at reports/estimates, disclose gaps and return receipts instead of full evidence.
