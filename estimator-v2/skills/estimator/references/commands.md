@@ -8,7 +8,8 @@ Read the advertised skill before resolving resources and invoke these commands w
 | --- | --- |
 | Writable setup | setup --workspace /workspace |
 | First-use copy/install/verify with reusable receipts | bootstrap --workspace /workspace |
-| Routine bounded assignment | job --file <absolute immutable job.json> |
+| Script-owned normal transition | flow --jobs-dir <absolute folder> --id <stable step ID> --kind <kind> <options>; see [flow contract](job-contract.md) |
+| Existing immutable job (compatibility/diagnosis) | job --file <absolute immutable job.json> |
 | One-route recovery after settlement | recover-capture --run <folder> --url <selected route> --reason failed\|obstructed\|lazy-incomplete --diagnosis <observed evidence> |
 | Dependency/browser check | verify |
 | Required Firecrawl discovery | plan --url <seed> --discovery-file <saved JSON> |
@@ -37,7 +38,7 @@ Detection/import receipts return one next packet and counts. Use next after resu
 
 Desktop is enforced, not just a default. --viewports mobile or mixed viewports is rejected. --model on init is rejected; configure the image-capable model in Kajoo. On import-result, optional --model and --trace-id record actual analysis provenance only, never choose or call a model.
 
-awaiting-analysis means Developer reserves packets with batch, Orchestrator dispatches fresh Visual Analysis jobs, then Developer uses settle-batch for serial validation/import. awaiting-consolidation/estimation means Developer reads the saved request, performs native reasoning, writes JSON and imports it. It is not a request for user approval. Complete all pending tile imports before reporting. Keep quality correction passes bounded to two per affected tile. Browser stages honor a persisted stop; --retry-browser is an explicit operator action after inspection, never a resume default. Do not overlap operations; an interrupted lock requires checking its PID has exited before removal. Persist run/plan paths in saved run evidence and reuse them instead of repeating init.
+awaiting-analysis means scripts reserve packets; Estimator dispatches fresh Visual Analysis workers, then directly runs flow settle-batch for serial imports and the next reservation. No Developer execution agent. awaiting-consolidation/estimation means Estimator reads the bounded saved text request, reasons over relevant reports, writes source-bound decisions/fragments and runs script validation/import. It is not a request for user approval. Complete all pending tile imports before reporting. Keep quality correction passes bounded to two per affected tile. Browser stages honor a persisted stop; --retry-browser is an explicit operator action after inspection, never a resume default. Do not overlap operations; an interrupted lock requires checking its PID has exited before removal. Persist run/plan paths in saved run evidence and reuse them instead of repeating init.
 
 
 Every URL intake starts with the Firecrawl MCP Map result, then plan/select and init --selection. The scripts consume the saved MCP response; they do not call Firecrawl directly. Sitecore is the automatic estimation target unless explicitly overridden; do not ask which CMS to use. Low-level init --urls-file remains for fixtures/diagnostics, not as a recipe intake path or Firecrawl fallback.

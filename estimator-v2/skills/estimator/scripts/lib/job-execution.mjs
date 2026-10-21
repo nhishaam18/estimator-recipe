@@ -1,15 +1,16 @@
-// Bounded deterministic Developer assignments. This module never invokes a model.
+// Durable deterministic pipeline operations. This module never invokes a model.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {assertRuntimeExecution} from './runtime-location.mjs';
 const cli=fileURLToPath(new URL('../cest.mjs',import.meta.url));
 const hash=value=>createHash('sha256').update(value).digest('hex');
 async function atomic(file,value){await fs.mkdir(path.dirname(file),{recursive:true});const temp=`${file}.${randomUUID()}.tmp`;await fs.writeFile(temp,JSON.stringify(value,null,2)+'\n');await fs.rename(temp,file);}
 async function json(file,max=64000){const stat=await fs.stat(file);if(stat.size>max)throw new Error('Job input exceeds its size limit');return JSON.parse(await fs.readFile(file,'utf8'));}
 const kinds=new Set(['discover-plan','prepare','advance','settle-batch','recover-capture','report','prepare-consolidation','import-consolidation','prepare-estimates','import-estimates','assemble-estimates']);
-const fields=new Set(['schemaVersion','id','kind','runDir','runsDir','planDir','planFingerprint','quotasFile','discoveryFile','url','name','batchId','outcomesFile','reason','diagnosis','resultFile','partsFile','target','rate','currency']);
+const fields=new Set(['schemaVersion','id','kind','runtime','runDir','runsDir','planDir','planFingerprint','quotasFile','discoveryFile','url','name','batchId','outcomesFile','reason','diagnosis','resultFile','partsFile','target','rate','currency']);
 export function validateOutcomes(value){
  if(!Array.isArray(value)||value.length>2)throw new Error('Outcomes must be a bare array of at most two {requestId,jobId,status,reason?} objects; not {jobs:[...]}');
  const seen=new Set();
@@ -33,7 +34,7 @@ function validateJob(job){
  if(['import-consolidation','import-estimates'].includes(job.kind))required.push('resultFile');
  if(job.kind==='assemble-estimates')required.push('partsFile');
  for(const key of required)if(typeof job[key]!=='string'||!job[key].trim())throw new Error(`Job requires ${key}`);
- for(const key of ['runDir','runsDir','planDir','quotasFile','discoveryFile','outcomesFile','resultFile','partsFile'])if(job[key]!==undefined&&(typeof job[key]!=='string'||!path.isAbsolute(job[key])))throw new Error(`${key} must be an absolute path`);
+ for(const key of ['runtime','runDir','runsDir','planDir','quotasFile','discoveryFile','outcomesFile','resultFile','partsFile'])if(job[key]!==undefined&&(typeof job[key]!=='string'||!path.isAbsolute(job[key])))throw new Error(`${key} must be an absolute path`);
  if(job.batchId!==undefined&&!/^[a-f0-9-]{36}$/.test(job.batchId))throw new Error('Invalid batchId');
  if(job.reason!==undefined&&(typeof job.reason!=='string'||job.reason.length>2000))throw new Error('Keep the diagnosis reason below 2000 characters');
  if(job.diagnosis!==undefined&&(typeof job.diagnosis!=='string'||job.diagnosis.length>2000))throw new Error('Keep diagnosis below 2000 characters');
@@ -43,6 +44,7 @@ function validateJob(job){
 async function invokeCommand(command,args,{folder,index}){
  const argv=[cli,command,...Object.entries(args).flatMap(([k,v])=>v===undefined?[]:[`--${k}`,String(v)])];
  const stdoutFile=path.join(folder,`${index}-${command}.stdout.log`),stderrFile=path.join(folder,`${index}-${command}.stderr.log`);
+ await atomic(path.join(folder,`${index}-${command}.command.json`),{command,entrypoint:cli,sourceModule:fileURLToPath(import.meta.url),node:process.execPath,cwd:process.cwd(),at:new Date().toISOString()});
  const out=await fs.open(stdoutFile,'w'),err=await fs.open(stderrFile,'w');
  try{
   const code=await new Promise((resolve,reject)=>{
@@ -53,13 +55,14 @@ async function invokeCommand(command,args,{folder,index}){
   const size=(await out.stat()).size;if(size>1024*1024)throw new Error(`Unexpected large command receipt; inspect ${stdoutFile}`);
   const text=await fs.readFile(stdoutFile,'utf8');let result;
   try{result=JSON.parse(text.trim().split('\n').at(-1));}catch{throw new Error(`Command returned no JSON receipt; inspect ${stdoutFile}`);}
-  if(code!==0)throw new Error(`${command}: ${result.reason??'failed'}; log: ${stderrFile}`);
+  if(code!==0)throw new Error(`${command}: ${result.reason??'failed'}; stdout: ${stdoutFile}; stderr: ${stderrFile}`);
   return result;
  }finally{await out.close();await err.close();}
 }
 // One durable assignment can execute once. Changed inputs need a new reviewed job ID.
 export async function executeJob(file,{invoke=invokeCommand}={}){
  file=path.resolve(file);const job=await json(file);
+ const execution={...assertRuntimeExecution({entrypoint:cli,runtime:job?.runtime}),sourceModule:fileURLToPath(import.meta.url)};
  if(!job||typeof job.id!=='string'||!/^[a-z0-9][a-z0-9-]{0,79}$/.test(job.id))throw new Error('Invalid job ID');
  const folder=path.join(path.dirname(file),'receipts',job.id),receiptFile=path.join(folder,'receipt.json');await fs.mkdir(folder,{recursive:true});
  const lockFile=path.join(folder,'execution.lock');let lock;
@@ -121,7 +124,7 @@ export async function executeJob(file,{invoke=invokeCommand}={}){
    }
   }catch(error){result={status:'blocked',reason:error.message,next:'Inspect the saved job/progress/logs. Do not rerun or edit scripts automatically; return a bounded diagnosis request.'};}
   if(result.packets&&result.runDir)result.packets=result.packets.map(p=>({...p,...Object.fromEntries(['promptFile','image','resultFile'].filter(k=>p[k]).map(k=>[k,path.resolve(result.runDir,p[k])]))}));
-  const receipt={...result,job:{id:job.id,kind:job.kind,file},fingerprint,receiptFile,commands:index,recordedAt:new Date().toISOString()};
+  const receipt={...result,job:{id:job.id,kind:job.kind,file},execution,fingerprint,receiptFile,commands:index,recordedAt:new Date().toISOString()};
   if(Buffer.byteLength(JSON.stringify(receipt))>64000)throw new Error('Command receipt exceeds 64 KB; inspect saved progress instead of expanding context');
   await atomic(receiptFile,receipt);return receipt;
  }finally{await lock.close();await fs.unlink(lockFile);}

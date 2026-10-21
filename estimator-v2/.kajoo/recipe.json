@@ -1,5 +1,5 @@
 {
-  "name": "Estimator 2.2.0",
-  "version": "2.2.0",
-  "description": "Desktop estimation with durable script-executed Developer jobs, reusable verified setup and two isolated Visual Analysis workers. Firecrawl sampling, source-bound annotations/component/style reports, bounded capture recovery and Sitecore-default estimates. No app, provider key, phases, tasks or implementation."
+  "name": "Estimator 2.0.0",
+  "version": "2.0.0",
+  "description": "Script-controlled desktop estimation with Estimator and isolated Kajoo Visual Analysis. Scripts own Firecrawl URL grouping/sampling, capture, serial imports, annotation and report assembly; Kajoo replaces the visual model boundary. Preserves component/style reports and Sitecore-default estimates. No Developer execution agent, app, provider key, phases, tasks or implementation."
 }

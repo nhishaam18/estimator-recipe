@@ -6,4 +6,4 @@ The supported command uses existing browser helpers, serial request pacing, desk
 
 Unchanged source preserves imports. Changed screenshot/HTML/rectangles invalidate source-bound detections for the affected page, so its tiles may require analysis again; unrelated pages remain intact. Never claim old imports match a changed full-image hash. Prior revisions are audit evidence, not detections accepted against a new source.
 
-Return recovery receipt and next packets or a failed/blocked limitation. Developer does not inspect images, create diagnostics, import Playwright ad hoc, search capture source or retry the whole website. If supported recovery fails, retain the gap and stop further repair of that source.
+Return recovery receipt and next packets or a failed/blocked limitation. Estimator does not interpret screenshots, create ad-hoc diagnostics, import Playwright ad hoc, search capture source or retry the whole website. It invokes the supported packaged recovery command directly. If supported recovery fails, retain the gap and stop further repair of that source.

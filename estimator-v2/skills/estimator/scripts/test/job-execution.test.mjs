@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {executeJob,validateOutcomes} from '../lib/job-execution.mjs';
 import {buildUrlPlan} from '../lib/urlplanning.mjs';
 async function fixture(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'estimator-job-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
@@ -19,7 +20,7 @@ test('settlement and next reservation run once and replay returns saved small re
  const calls=[],invoke=async(command,args)=>{calls.push({command,args});return command==='settle-batch'?{status:'settled',failed:0,emptyResults:[],imported:1}:{status:'awaiting-workers',batchId:'next',packets:[{requestId:'b'.repeat(64)}]};};
  const first=await executeJob(file,{invoke});assert.equal(first.status,'awaiting-workers');assert.equal(calls.length,2);assert.equal(first.imported,1);
  const again=await executeJob(file,{invoke});assert.equal(again.replayed,true);assert.equal(calls.length,2);assert.equal(again.batchId,'next');
- const saved=JSON.parse(await fs.readFile(first.receiptFile,'utf8'));assert.equal(saved.job.id,'settle-one');
+ const saved=JSON.parse(await fs.readFile(first.receiptFile,'utf8'));assert.equal(saved.job.id,'settle-one');assert.match(saved.execution.entrypoint,/scripts\/cest\.mjs$/);assert.match(saved.execution.sourceModule,/job-execution\.mjs$/);
 });
 test('failed validation does not run commands and is not blindly retried',async t=>{
  const root=await fixture(t),file=path.join(root,'job.json'),outcomesFile=path.join(root,'outcomes.json');
@@ -61,6 +62,7 @@ test('real child command groups saved discovery and records absolute durable pla
  await fs.writeFile(discoveryFile,JSON.stringify({links:[{url:'https://example.test/'},{url:'https://example.test/about'}]}));
  await fs.writeFile(file,JSON.stringify({schemaVersion:1,id:'plan-once',kind:'discover-plan',url:'https://example.test/',discoveryFile,runsDir}));
  const result=await executeJob(file);assert.equal(result.status,'awaiting-selection',result.reason);assert(path.isAbsolute(result.planDir));assert.equal(result.commands,1);assert.equal(result.job.id,'plan-once');assert.equal((await executeJob(file)).replayed,true);
+ const command=JSON.parse(await fs.readFile(path.join(root,'receipts/plan-once/0-plan.command.json'),'utf8'));assert.equal(command.command,'plan');assert.match(command.entrypoint,/cest\.mjs$/);assert.match(command.sourceModule,/job-execution\.mjs$/);
 });
 test('prepare binds the reviewed plan and rejects a changed valid plan on replay',async t=>{
  const root=await fixture(t),planDir=path.join(root,'plan'),file=path.join(root,'prepare.json'),quotasFile=path.join(root,'quotas.json');await fs.mkdir(planDir);await fs.writeFile(quotasFile,'{}');
@@ -78,4 +80,12 @@ test('assembly fingerprint includes referenced fragment bytes',async t=>{
  await fs.writeFile(file,JSON.stringify({schemaVersion:1,id:'assemble-once',kind:'assemble-estimates',runDir:root,partsFile}));
  let calls=0;const invoke=async()=>{calls++;return {status:'estimated'};};await executeJob(file,{invoke});await fs.writeFile(fragment,'{"items":[{}]}');
  await assert.rejects(executeJob(file,{invoke}),/changed/);assert.equal(calls,1);
+});
+test('wrong runtime handoff is rejected without creating or poisoning a receipt',async t=>{
+ const root=await fixture(t),file=path.join(root,'handoff.json');
+ const job={schemaVersion:1,id:'handoff-once',kind:'advance',runDir:root,runtime:path.join(root,'unrelated-runtime')};await fs.writeFile(file,JSON.stringify(job));
+ let calls=0;const invoke=async()=>{calls++;return {status:'partial'};};
+ await assert.rejects(executeJob(file,{invoke}),e=>e.code==='CEST_WRONG_RUNTIME'&&/does not match/.test(e.message));assert.equal(calls,0);await assert.rejects(fs.stat(path.join(root,'receipts')),/ENOENT/);
+ job.runtime=fileURLToPath(new URL('../../',import.meta.url));await fs.writeFile(file,JSON.stringify(job));
+ const result=await executeJob(file,{invoke});assert.equal(result.status,'partial');assert.equal(calls,1);assert.equal(result.replayed,undefined);
 });

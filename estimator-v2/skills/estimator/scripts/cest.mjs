@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
+import {assertRuntimeExecution} from './lib/runtime-location.mjs';
 const skill=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const packageVersion=JSON.parse(await fs.readFile(path.join(skill,'scripts/package.json'),'utf8')).version;
 const [command,...argv]=process.argv.slice(2), args={};
@@ -20,6 +21,7 @@ const help={commands:['setup --workspace <writable folder>','verify','init --sel
 help.commands.push('next --run <ID or folder> (compact saved checkpoint and one next packet)');
 help.commands.push('batch --run <folder> [--retry-request <id> --retry-kind transient|correction] [--correction-request <id>]', 'settle-batch --run <folder> --batch <id> --outcomes-file <JSON>', 'assemble-estimates --run <folder> --parts-file <JSON array of run-relative fragment paths>');
 help.commands.push('bootstrap --workspace <folder> (copy/install/verify once with persistent receipts)','job --file <absolute immutable job.json>','recover-capture --run <folder> --url <selected route> --reason failed|obstructed|lazy-incomplete [--diagnosis <observed evidence>]');
+help.commands.push('flow --id <stable step ID> --kind <job kind> --jobs-dir <absolute folder> [job options] (scripts create immutable jobs and execution checkpoints; no Developer agent)');
 async function setup(){
  if(typeof args.workspace!=='string')throw new Error('setup requires --workspace <writable folder>');
  const workspace=path.resolve(args.workspace),runtime=path.join(workspace,'estimator-runtime','estimator');
@@ -35,6 +37,10 @@ async function main(){
   if(typeof args.workspace!=='string')throw new Error('bootstrap requires --workspace');
   try{print(await (await import('./lib/bootstrap.mjs')).bootstrap({skill,workspace:path.resolve(args.workspace)}));}
   catch(error){print(error.receipt??{status:'blocked',reason:error.message,receiptFile:error.receiptPath,logPath:error.logPath});process.exitCode=2;}return;
+ }
+ assertRuntimeExecution({entrypoint:fileURLToPath(import.meta.url)});
+ if(command==='flow'){
+  print(await (await import('./lib/script-flow.mjs')).executeFlow(args));return;
  }
  if(command==='job'){
   if(typeof args.file!=='string'||!path.isAbsolute(args.file))throw new Error('job requires an absolute --file');
@@ -227,4 +233,4 @@ async function main(){
   await (await import('./lib/work-state.mjs')).saveWorkState(id);
  }
 }
-await main().catch(error=>{print({status:'blocked',reason:error.message});process.exitCode=2;});
+await main().catch(error=>{print({status:'blocked',reason:error.message,...(error.code?{code:error.code}:{}),entrypoint:fileURLToPath(import.meta.url)});process.exitCode=2;});

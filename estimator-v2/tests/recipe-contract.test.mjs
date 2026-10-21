@@ -12,9 +12,9 @@ test('canonical package has native final frontmatter and no pre-seeded workflow'
  assert(!fs.existsSync(path.join(root,'workflow.json')));
  assert.match(read('.gitignore'),/!skills\/estimator\/scripts\/package-lock\.json/,'Locked runtime dependencies must survive recipe publication');
  const agent=read('agents/estimator.md');assert.doesNotMatch(agent,/^kajoo:/m);
- assert.deepEqual(list(agent,'skills'),['estimator-orchestration']);
- assert.deepEqual(list(agent,'tools'),['kajoo/ask-user-input','kajoo/run-agent']);
- assert(list(read('agents/developer.md'),'tools').includes('firecrawl/firecrawl_map'));
+ assert.deepEqual(list(agent,'skills'),['estimator-orchestration','estimator']);
+ assert.deepEqual(fs.readdirSync(path.join(root,'agents')).sort(),['estimator.md','visual-analysis.md']);
+ for(const tool of ['kajoo/ask-user-input','kajoo/run-agent','firecrawl/firecrawl_map','kajoo/create-artifact'])assert(list(agent,'tools').includes(tool),tool);
  assert(list(agent,'tools').every(t=>!/(?:task|epic)/.test(t)),'Task/epic tools must not be attached');
  assert(agent.length<4500,'Detailed procedures belong in skills');
 });
@@ -52,20 +52,27 @@ test('visual work is delegated through a focused agent with fresh-job instructio
  assert.match(worker,/isDefault: false/);
  assert.match(worker,/tags: \[Sub Agent\]/);
  const delegation=read('skills/estimator-orchestration/SKILL.md');
- assert.match(delegation,/Omit runId/);
+ assert.match(delegation,/omit runId/i);
  assert.match(delegation,/resultFile/);
  assert.match(delegation,/at most TWO/);
- assert.deepEqual(list(read('agents/developer.md'),'skills'),['estimator']);
- assert(!list(read('agents/developer.md'),'tools').includes('kajoo/run-agent'));
+ assert.match(delegation,/No Developer execution agent/);
+ assert.match(delegation,/SAME assistant tool-call batch/);
+ assert.match(delegation,/run flow settle-batch directly/i);
  assert.match(delegation,/NO automatic paired/);
  assert(!fs.existsSync(path.join(root,'skills/estimator/scripts/lib/visual-review.mjs')));
  assert.equal(read('skills/estimator-visual-analysis/references/annotation-contract.md'),read('skills/estimator/references/annotation-contract.md'));
 });
 
-test('routine jobs have a small entry, exact shared schema and durable retention instructions',()=>{
- const skill=read('skills/estimator/SKILL.md');assert(skill.length<4600,'Entry should not preload the full workflow');assert.match(skill,/job --file/);assert.match(skill,/immediately/i);
- const developer=read('agents/developer.md');assert.match(developer,/messages: 40/);assert.match(developer,/tokens: 40000/);assert.match(developer,/messages: 8/);assert.match(developer,/runLimit: 24/);
+test('scripts own routine execution with shared contracts and durable retention instructions',()=>{
+ const skill=read('skills/estimator/SKILL.md');assert(skill.length<4600,'Entry should not preload the full workflow');assert.match(skill,/cest\.mjs flow/);assert.match(skill,/immediately/i);
+ const main=read('agents/estimator.md');assert.match(main,/messages: 24/);assert.match(main,/tokens: 24000/);assert.match(main,/messages: 8/);
  const contract=read('skills/estimator/references/job-contract.md');assert.equal(contract,read('skills/estimator-orchestration/references/job-contract.md'));assert.match(contract,/bare array/);assert.match(contract,/jobId/);assert.match(contract,/replay/i);
  assert.match(read('skills/estimator-orchestration/SKILL.md'),/No ad-hoc diagnostics/);
  assert.match(read('skills/estimator/references/setup.md'),/bootstrap --workspace/);
+ assert.match(contract,/Cached|cached/);assert.match(contract,/flow command constructs immutable job JSON/);
+ for(const file of ['agents/estimator.md','skills/estimator/SKILL.md','skills/estimator-orchestration/SKILL.md','prompts/start.md']){
+  assert.doesNotMatch(read(file),/Have Developer|Developer owns technical|fresh Developer|Do not.*run technical scripts|Coordinate only/);
+ }
+ assert.match(read('skills/estimator/references/context-budget.md'),/not provider token ceilings/);
+ assert.match(read('skills/estimator-orchestration/SKILL.md'),/Inline-only output has no implicit file handle/);
 });

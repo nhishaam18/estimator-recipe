@@ -1,4 +1,4 @@
-// Developer-owned serial reservations/imports; Visual Analysis writes only assigned per-attempt drafts.
+// Script-owned serial reservations/imports; Visual Analysis writes only assigned per-attempt drafts.
 import fs from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {getRun,inRun,runDir,readJson,writeJson} from './store.mjs';
@@ -18,7 +18,7 @@ function receipt(batch,reused=false){
  return {status:batch.closed?'settled':'awaiting-workers',runDir:batch.runDir,batchId:batch.id,batchFile:`visual-batches/${batch.id}.json`,reused,
   imported:batch.items.filter(i=>i.state==='imported').length,failed:batch.items.filter(i=>['failed','blocked','cancelled'].includes(i.state)).length,
   packets:batch.items.map(i=>({requestId:i.requestId,promptFile:i.promptFile,image:i.image,resultFile:i.resultFile,state:i.state,jobId:i.jobId??null,errorFile:i.errorFile??null})),
-  next:batch.closed?'Developer inspects failures and prepares remaining work; no automatic retry':'Orchestrator dispatches new reservations once or reconciles existing jobs; no duplicate dispatch'};
+  next:batch.closed?'Inspect named failures or continue via scripts; no automatic retry':'Orchestrator dispatches new reservations once or reconciles existing jobs; no duplicate dispatch'};
 }
 export async function reserveBatch(id,{retryRequest,correctionRequest,retryKind='transient'}={}){
  return locked(id,async()=>{

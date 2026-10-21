@@ -1,31 +1,27 @@
 ---
 name: estimator
-description: Execute bounded Estimator Developer assignments using saved jobs, scripts and evidence. Discover URLs through Firecrawl, capture desktop pages, import visual results, produce component/style reports and effort estimates.
+description: "Use when running the script-controlled desktop Estimator pipeline: Firecrawl grouping/sampling, captures, Kajoo screenshot-result imports, component/style reports and effort estimates."
 ---
 
-# Developer entry
+# Packaged Estimator runtime
 
-Read this advertised SKILL.md to stage resources. Resolve scripts against its exact path, preserving `/mnt/skills/workspace/...` or `/mnt/skills/agents/<id>/...`. Packaged skills are read-only. Use native read/write/bash. No nested agents, external model API, application, CMS implementation or deployment.
+Estimator runs these trusted scripts directly with native bash. There is no Developer execution agent. Read this advertised SKILL.md once to stage resources; preserve its exact /mnt/skills/workspace/... or /mnt/skills/agents/<id>/... scope. The skill projection is read-only. No external model API, provider key, app/server, CMS implementation or deployment.
 
-## Assigned job first
+## Setup once and execute
 
-Read only the supplied immutable job.json (max 64 KB). Keep its path and original assignment across summaries. With the supplied absolute runtime, execute one foreground command:
+On first use read [setup](references/setup.md) and run `node <skill>/scripts/cest.mjs bootstrap --workspace /workspace`. Immediately save its literal runtime, runsDir, receiptPath and verificationReceiptPath. Reuse that runtime after summaries. Recover a lost path from its bootstrap receipt; never substitute /mnt/skills for processing or reinstall there.
 
-`node <runtime>/scripts/cest.mjs job --file <absolute job.json>`
+Use [flow contract](references/job-contract.md). Run `node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --id <stable-step-id> --kind <operation> <options>` directly. Scripts create immutable job files and checkpoints, execute deterministic stages and return compact receipts. Do not manually write routine job JSON or launch another agent to execute it. Repeating a step returns its receipt; it does not authorize another model dispatch. Changed inputs require reconciliation and a new ID. Partial progress uses a new advance step on the same run; blocked or uncertain execution stops.
 
-Return receiptFile, status, counts, blockers and at most two packet paths. Do not read more references, list directories, search for scripts, inspect images or reconstruct history for a successful routine assignment. The command saves logs/progress and its receipt. Repeating it returns the receipt without repeating work. Replayed/reused packets never authorize redispatch. A blocked receipt is a result to return, not permission to write diagnostics or repair scripts. Read [job contract](references/job-contract.md) only when creating/diagnosing an assignment.
+Always use Firecrawl Map for a new starting URL, immediately persist the complete result and run flow discover-plan. Prefer an actual connector result file; inline-only output must be saved once without inventing a file handle or reducing the result. [URL planning](references/url-planning.md) defines script grouping. Show every group count and ask explicit quantities for each. Save approved quotas; flow prepare selects/initializes/captures and reserves packets. Never scan deferred URLs, resample on resume or treat tool approval as sampling consent.
 
-## First discovery
+## Model boundary and accuracy
 
-Read [setup](references/setup.md) only on first use or actual setup failure. Run `node <skill>/scripts/cest.mjs bootstrap --workspace /workspace` once; save receipt/runtime paths immediately. Later jobs use that runtime without repeating setup/npm/browser verification. Bootstrap reuses verified receipts when identities match.
+Scripts prepare at most two screenshot packets; Estimator dispatches fresh Visual Analysis workers, waits for actual Kajoo outcomes and runs flow settle-batch directly. Only Visual Analysis interprets screenshots. Workers write isolated drafts; scripts validate source/geometry/parent ownership, import serially, draw annotations, refine families and generate reports. Estimator does not inspect screenshots or reconstruct detections. See [visual delegation](references/visual-delegation.md).
 
-Always use Firecrawl Map for the starting URL, reusing an exact-scope saved response on resume. Immediately save the complete result, or copy an actual platform-provided result file, before other reads. Never reconstruct URLs from memory, re-Map because output was cleared, or silently narrow a successful response. Execute a discover-plan job on that saved file; return EVERY group ID/pattern/count/suggestion. Orchestrator obtains explicit quantities and freezes the sample. Read [URL planning](references/url-planning.md) only for discovery. Unavailable complete output or a connector failure is blocked, not a loop of different limits.
-
-## Scope and accuracy
-
-- Desktop only at 1440×900, full-page captures. Accept/dismiss or remove recognized consent/popups and recheck before capture. Preserve network stops; no mobile-only families.
-- Visual Analysis owns screenshot interpretation. Preserve Section + Inner components, composite cards, standalone CTAs, repeated occurrences and owned primitive fields. Annotation and implementation counting differ. Never bypass source/geometry/ownership validation, invent unseen content or force lower counts.
-- Reports retain fields/elements, CSS, assets, fonts and typography. Consolidation cannot merge parent and child. Estimates count unique implementation once. Sitecore is default. Do not ask which CMS; use explicit overrides. Monetary cost requires a user-supplied rate/currency.
-- Reuse discovery-checkpoint.json, approved selection and saved results. No phases/tasks, retired viewer/ZIP or code generation. Stop at reports and estimates and disclose gaps.
-
-Only for native consolidation, estimates, publication or a separate diagnosed failure: read the matching row in [Developer assignments](references/developer-jobs.md), then the relevant reference. [Full workflow](references/workflow.md) and [commands](references/commands.md) are reference material, not mandatory startup reads.
+- Desktop only at 1440×900, full-page capture. Accept/dismiss or remove recognized consent/popups and recheck before capture. Use preinstalled Playwright/matching Chromium, bounded serial network-safe capture and preserved stops.
+- Preserve Section + Inner components, composite cards/slider items/hero shortcuts, standalone CTAs, every supported occurrence and owned primitive fields. Annotation and unique implementation counts differ. No mobile-only families, forced low counts or unseen content.
+- Reports retain component anatomy/fields, CSS, assets, fonts and typography. No automatic paired-region second pass. [Workflow](references/workflow.md) and [commands](references/commands.md) are conditional references, not repeated startup reads.
+- Prepare consolidation/estimates via scripts; Estimator reasons over bounded saved text requests/evidence and saves source-bound decisions/fragments. Scripts validate/import/assemble. See [estimation](references/estimation.md); do not add an execution agent.
+- Sitecore is default. Do not ask which CMS; explicit overrides only. Count each unique implementation once; parent composition excludes separately counted child work. Monetary cost requires user-supplied rate/currency.
+- Reuse discovery-checkpoint.json, approved selection and imported results. Stop at reports and estimates, disclose gaps and publish only actual files. No phases/tasks, retired review viewer/ZIP, code generation or automatic CMS developer dispatch.
