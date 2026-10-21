@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {createRun,inRun,writeJson,readJson,updateRun} from '../lib/store.mjs';
 import {buildList} from '../lib/buildlist.mjs';
-import {prepareConsolidation,importConsolidation,prepareEstimates,importEstimates,exportInventory,execute} from '../lib/estimation.mjs';
+import {prepareConsolidation,importConsolidation,prepareEstimates,importEstimates,assembleEstimates,exportInventory,execute} from '../lib/estimation.mjs';
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'estimator2-'));process.env.CEST_RUNS_DIR=root;t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const run=await createRun({urls:['https://example.invalid/page'],name:'fixture',viewports:['desktop']});
@@ -25,6 +25,21 @@ async function fixture(t){
 test('desktop is enforced at run creation and loaded run boundary',async t=>{
  const run=await fixture(t);await assert.rejects(createRun({urls:run.urls,viewports:['mobile']}),/desktop only/);
  await updateRun(run.id,r=>{r.viewports=['desktop','mobile'];});await assert.rejects(buildList(run.id),/desktop-only/);
+});
+
+test('bounded estimate fragments assemble all unique keys and reject duplicates, missing and stale parts',async t=>{
+ const run=await fixture(t),prepared=await prepareEstimates(run.id),list=await buildList(run.id);
+ const items=list.entries.map(e=>({key:e.key,lowHours:1,likelyHours:2,highHours:3,rationale:'Saved component evidence and separate child work',exclusions:['Content migration']}));
+ const a='estimation/drafts/a.json',b='estimation/drafts/b.json';
+ await writeJson(inRun(run.id,a),{requestId:prepared.requestId,assumptions:['Desktop only'],items:items.slice(0,2)});
+ await writeJson(inRun(run.id,b),{requestId:prepared.requestId,assumptions:['Desktop only'],items:items.slice(2)});
+ assert.deepEqual((await assembleEstimates(run.id,[a,b])).totals,{lowHours:4,likelyHours:8,highHours:12});
+ await assert.rejects(assembleEstimates(run.id,[a]),/exactly one/);
+ await assert.rejects(assembleEstimates(run.id,[a,a]),/distinct/);
+ await writeJson(inRun(run.id,b),{requestId:prepared.requestId,assumptions:['Desktop only'],items:items.slice(0,2)});
+ await assert.rejects(assembleEstimates(run.id,[a,b]),/duplicate/);
+ await writeJson(inRun(run.id,b),{requestId:'stale',assumptions:['Desktop only'],items:items.slice(2)});
+ await assert.rejects(assembleEstimates(run.id,[a,b]),/Stale/);
 });
 test('estimation defaults to Sitecore without a CMS question and honors explicit overrides',async t=>{
  const run=await fixture(t);await prepareEstimates(run.id);

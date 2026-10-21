@@ -23,16 +23,18 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Estimate import | import-estimates --run <folder> --result-file <JSON> |
 | Progress | status --run <folder> |
 | Compact resume / next tile | next --run <folder> |
-| Prepare annotation review | review --run <folder> |
-| Import visual review | import-review --run <folder> --request <id> --result-file <assigned JSON> |
+| Reserve two visual packets | batch --run <folder> |
+| Import verified worker outcomes serially | settle-batch --run <folder> --batch <id> --outcomes-file <JSON> |
+| Diagnose/retry a failed packet | batch --run <folder> --retry-request <id> --retry-kind transient\|correction |
+| Correct an imported detection | batch --run <folder> --correction-request <id> |
+| Assemble estimate fragments | assemble-estimates --run <folder> --parts-file <JSON array of run-relative paths> |
 
-Visual work follows [visual delegation](visual-delegation.md): fresh child jobs without runId, compact receipts, and orchestrator-only imports. Review corrections can use import-review --replace after actual reinspection; original result snapshots remain saved. Review status never clears automated quality findings.
 
-Detection/import receipts return one next packet and counts. Use next after resume, not between successful imports. Resolve prompt/image/result paths under the run folder. work-state.json saves derived progress; execution-notes.json holds compact decisions and visual-review outcomes. See [context budget](context-budget.md). Wait for one bounded foreground command to exit; never background/poll/relaunch an active pipeline.
+Detection/import receipts return one next packet and counts. Use next after resume, not between successful imports. Resolve prompt/image/result paths under the run folder. work-state.json saves derived progress; execution-notes.json holds compact decisions, job outcomes and quality gaps. See [context budget](context-budget.md). Wait for one bounded foreground command to exit; never background/poll/relaunch an active pipeline.
 
 Desktop is enforced, not just a default. --viewports mobile or mixed viewports is rejected. --model on init is rejected; configure the image-capable model in Kajoo. On import-result, optional --model and --trace-id record actual analysis provenance only, never choose or call a model.
 
-awaiting-analysis means delegate the current packet to Visual Analysis and import its assigned result file. awaiting-consolidation/estimation means the orchestrator reads the saved request, performs native reasoning, writes JSON and imports it. It is not a request for user approval. Complete all pending tile imports before reporting. Keep quality correction passes bounded to two per affected tile. Browser stages honor a persisted stop; --retry-browser is an explicit operator action after inspection, never a resume default. Do not overlap operations; an interrupted lock requires checking its PID has exited before removal. Persist run/plan paths in saved run evidence and reuse them instead of repeating init.
+awaiting-analysis means Developer reserves packets with batch, Orchestrator dispatches fresh Visual Analysis jobs, then Developer uses settle-batch for serial validation/import. awaiting-consolidation/estimation means Developer reads the saved request, performs native reasoning, writes JSON and imports it. It is not a request for user approval. Complete all pending tile imports before reporting. Keep quality correction passes bounded to two per affected tile. Browser stages honor a persisted stop; --retry-browser is an explicit operator action after inspection, never a resume default. Do not overlap operations; an interrupted lock requires checking its PID has exited before removal. Persist run/plan paths in saved run evidence and reuse them instead of repeating init.
 
 
 Every URL intake starts with the Firecrawl MCP Map result, then plan/select and init --selection. The scripts consume the saved MCP response; they do not call Firecrawl directly. Sitecore is the automatic estimation target unless explicitly overridden; do not ask which CMS to use. Low-level init --urls-file remains for fixtures/diagnostics, not as a recipe intake path or Firecrawl fallback.

@@ -16,17 +16,19 @@ export async function saveWorkState(id, {analysis} = {}) {
  const request=manifest?.requests?.[0];
  const next=request?{operation:'inspect-tile',requestId:request.id,promptFile:request.promptFile,image:request.image,resultFile:`analysis-results/${request.id}/draft.json`}
   :stage?{operation:'resume-pipeline',through:stage==='detect'&&manifest?.pending===0?'report':stage,minutes:4}
-  :{operation:'review-report',report:'export/report.md',quality:'export/quality.json'};
+  :{operation:'inspect-quality-and-estimate',report:'export/report.md',quality:'export/quality.json'};
  const state={version:1,runId:id,runDir,completed,
   status:request?'awaiting-analysis':stage?'partial':quality?.status??'awaiting-review',
   counts:{selectedUrls:run.urls.length,representativeUrls:new Set(Object.values(run.selection??{}).flat()).size,failedPages:run.pages.filter(p=>Object.values(p.viewports).some(v=>v.status==='failed')).length},
   analysis:{pending:manifest?.pending??null,manifest:'analysis-requests/manifest.json'},
   sources:{input:'input/urls.json',plan:'input/url-plan.json',selection:'input/url-selection.json',notes:'execution-notes.json'},
-  outputs:{report:'export/report.md',quality:'export/quality.json',components:'export/components/',delivery:'export/delivery-manifest.json',visualReview:'export/visual-review.json',reviewManifest:'review-requests/manifest.json',estimationStatus:delivery?.estimationStatus??'not-prepared'},next};
+  outputs:{report:'export/report.md',quality:'export/quality.json',components:'export/components/',delivery:'export/delivery-manifest.json',batchIndex:'visual-batches/index.json',estimationStatus:delivery?.estimationStatus??'not-prepared'},next};
  // A request manifest may survive a recapture/invalidation. Do not dispatch it before capture completes.
  if(stage&&stages.indexOf(stage)<stages.indexOf('detect')){
   state.status='partial';state.next={operation:'resume-pipeline',through:'detect',minutes:4};
  }
+ const active=await readJson(inRun(id,'visual-batches/active.json'),null);
+ if(active){state.status='awaiting-workers';state.next={operation:'reconcile-visual-batch',batchId:active.batchId,batchFile:`visual-batches/${active.batchId}.json`};}
  if(lock&&lock.pid!==process.pid){
   state.status='blocked';state.next={operation:'inspect-operation-lock',file:'discovery.lock',pid:lock.pid};
  }

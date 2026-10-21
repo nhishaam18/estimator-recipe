@@ -1,6 +1,6 @@
 ---
 name: estimator-visual-analysis
-description: Use when an Estimator orchestrator assigns one saved desktop screenshot packet for component detection or one raw/annotated image pair for visual review in a fresh Kajoo sub-agent run.
+description: Use when an Estimator orchestrator assigns one saved desktop screenshot tile for component detection in a fresh Kajoo sub-agent run.
 ---
 
 # Focused desktop visual analysis
@@ -19,10 +19,8 @@ Cookie/consent/newsletter/location overlays that obstruct source content block t
 
 Write the complete schema-compliant raw JSON directly to resultFile once using native write. Do not read it back just to prove it was saved. Do not import, merge tiles, draw boxes, alter source evidence, remove uncertain components to reduce counts or open the source website. Return only a compact receipt: status=ready, mode=detect, requestId, resultFile, componentCount and blockers. On failure return status=blocked and blockers, never a ready receipt for a nonexistent file. Inspection declarations and a receipt are not independent proof of accuracy.
 
-## Annotation-review packet
+## Output isolation and completion
 
-The orchestrator supplies mode=review, requestId, promptFile, rawImage, annotatedImage and resultFile. Read the prompt and OPEN BOTH images; they are matched crops at identical full-width geometry. Compare every visible region, including clipped/overlap edges, parent/child ownership, repeated cards/items, hero tiles, CTA placement, navigation/footer grouping and whether boxes tightly follow real content. Check that primitives/raster contents are not boxed as components. A review image does not prove Build List coverage: use the packet's source request IDs and automated findings to flag missing independent units without creating families yourself.
+Write only the exact assigned per-attempt resultFile from the reserved batch. Two jobs may inspect different overlapping tiles of the same screenshot, but their files are distinct. Do not edit a shared manifest, merged page JSON, annotation or Build List. Do not process another packet, reuse another worker's response or import your own result. If the result path already contains a different job's output, stop with a conflict rather than overwrite it. On a correction, inspect the assigned image again and use the new assigned path; no previous-job memory is assumed.
 
-Return the prompt's source-bound review JSON: matching requestId and image hashes, status=passed|needs-correction|blocked, a short visual summary and findings (reason plus the affected detection requestIds when supported). Use needs-correction for supported missing/wrong boxes or components. Use blocked if evidence cannot be inspected, for obstruction, or when source identity cannot be established. Do not report passed without opening both images. Write only resultFile; do not edit annotations, import corrections or clear quality findings. Your final reply contains only status, mode=review, requestId, resultFile, findingCount and blockers.
-
-Every job ends after its one packet. Do not start the next tile or request another job. The orchestrator starts fresh child runs; no previous-job knowledge is assumed. Never claim whole-site coverage, behavior testing or CMS implementation readiness from a successful visual check.
+There is no automatic paired raw/annotated-region review in this recipe. Source-image detection and explicit targeted correction remain required. End after one packet, returning only a compact receipt. Never claim whole-site coverage, behavior testing, visual completeness or CMS readiness from valid detection JSON.

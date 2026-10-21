@@ -1,5 +1,5 @@
 {
-  "name": "Estimator 2.0.0",
-  "version": "2.0.0",
-  "description": "Desktop-only estimation with Firecrawl sampling, isolated Kajoo Visual Analysis jobs, source-bound annotation review, CMS-neutral reports and Sitecore-default implementation estimates. No standalone app, provider key, phases or tasks."
+  "name": "Estimator 2.1.0",
+  "version": "2.1.0",
+  "description": "Desktop estimation coordinated by Orchestrator with bounded Developer execution and batches of two isolated Visual Analysis jobs. Firecrawl sampling, component/style reports and Sitecore-default estimates; no paired-region second pass, app, provider key, phases or tasks."
 }

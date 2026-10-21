@@ -1,35 +1,15 @@
-# Execution with bounded context
+# Developer context budget
 
-Reduce repeated history and orchestration, not image resolution/overlap, granularity, styling/typography evidence or coverage. Scripts prepare requests, merge tiles, draw annotations, validate and report; Kajoo's model still inspects every required tile and the assembled annotation.
+Execute one bounded Developer assignment and return a compact file receipt. Orchestrator retains choices/counts/job IDs; Visual Analysis receives one reserved source tile. Neither child delegates. Read [Developer assignments](developer-jobs.md).
 
-## Working record
+Use saved runtime/run/plan paths and checkpoints. Keep execution-notes.json around 2 KB with decisions, command/pending/error IDs, estimate-progress paths and limitations. Do not retain full URL lists, screenshots/base64, DOM/style ledgers, detection JSON, report bodies or command history in summaries. Detailed evidence stays in files. Fresh jobs read only their assigned sources, never repeat setup, discovery, sampling or successful captures to reconstruct history.
 
-Keep exact runtime/run/plan paths. `node <runtime>/scripts/cest.mjs next --run <folder>` writes work-state.json and returns counts, source paths and one next operation. Pipeline/import commands also refresh it. Follow the next receipt already returned by detect/import; do not call next between successful imports.
+One bounded foreground command exits before the next. No &, nohup, sleep/ps polling or duplicate launches. Respect locks, active batches and browser-stop.json. Unknown ownership blocks mutation until reconciled. On awaiting-analysis reserve at most two packets with batch and return their paths. Orchestrator dispatches fresh workers. Developer imports verified outcomes sequentially through settle-batch; workers write only unique assigned drafts. Do not inspect images, invent detections or overwrite shared caches.
 
-Keep execution-notes.json as a separate small agent-written record: exact runtime/run/plan paths, explicit user decisions, current operation, visual-review outcomes, unresolved findings and report/estimate progress. Update at transitions, before long work and before compaction. Keep it around 2 KB with evidence paths/IDs. No full URL lists, screenshots/base64, DOM, result JSON, report bodies or command history. Paths alone do not prove completion.
+There is no automatic paired-region review. Primary detection preserves full image resolution, overlap, repeated occurrences, source hashes, Section/Inner boundaries, CTA distinctions and owned fields. Empty/uncertain results need targeted source-tile corrections or explicit provisional gaps. Script validity does not certify visual completeness. Diagnose failures before a bounded retry and preserve successful siblings.
 
-After compaction/resume, read these small records and only the source for the next operation. Do not replay setup/discovery, remap, resample, reinstall verified dependencies or reopen completed images just to recover history. Inspect existing processes/locks before resuming. Confirm a lock owner exited before removing only that stale lock. Preserve browser-stop.json.
+Save the exact Firecrawl response once through file tools, not giant shell heredocs or remembered URL lists. Return every required group count, not raw URLs; user sampling belongs to Orchestrator. Consolidation reads compact saved entries and consults ambiguous reports. Estimate at most ten unique items per fresh job, saving fragments/completed keys in estimation/progress.json. Scripts assemble complete source-bound estimates. Never guess styles, omit fields or force low counts to save tokens.
 
-## One screenshot packet
+Orchestrator/Developer summarize at 24 messages, retain six, cap summary input at 12K estimated tokens and clear tool outputs at 12K retaining two. Visual Analysis is separately bounded. Message counts avoid relying only on approximate image-token counting. Multiple fields in a trigger use AND. Settings are not provider-token ceilings. Fresh jobs isolate history; middlewareConfig.maxConcurrency alone does not enforce fan-out, so reservations allocate at most two.
 
-1. Run all --through detect once in the foreground and wait for exit. Reuse partial checkpoints; awaiting-analysis means dispatch saved packets, not another pipeline.
-2. Follow [visual delegation](visual-delegation.md): send the next packet's paths/ID to a fresh Visual Analysis job, omitting runId. The child reads one prompt, opens one image and writes the result. The parent receives only a compact receipt and imports the assigned resultFile.
-3. Never forward complete discovery, prior jobs, detection JSON or images to the parent or the next child. Save outstanding job/request IDs in execution-notes.json; wait for automatic result delivery instead of polling or duplicating active work.
-4. After detection, run report then review. Delegate each paired raw/annotated crop to a fresh child and import-review its findings. Use focused corrections and import-result --replace; regenerate changed reviews, keeping the existing two-pass correction limit. No forced passing verdicts or capture restarts to fix model-output errors.
-5. Keep geometry, every required image inspection, source hashes, DOM-backed validation, classification and complete report/estimate evidence unchanged. Missing agent/image capability blocks rather than a main-chat fallback.
-
-Do not routinely load the full manifest, raw HTML/style ledger, run.json or prior results. On real failures use scripts to extract affected records/counts/paths instead of cat/head/tail of huge JSON. Never truncate required output or omit evidence to meet a token target. Keep tile dimensions, overlap, JPEG quality and visual inspection unchanged.
-
-## Commands and later reasoning
-
-Use one bounded serial foreground command, then its receipt. No &, nohup, sleep/ps polling loops, duplicate launches, automatic retry sweep or circuit-breaker clearing. If the platform returns a running session handle, await that same handle using its supported mechanism. Do not launch a replacement; resume only after exit.
-
-Save the original Firecrawl response through the platform's file-saving mechanism. Do not regenerate URLs from memory or rewrite discovery as a giant shell heredoc. If direct saving is unavailable save the exact returned data once with a file tool; do not repeat Map just for another copy. Scripts normalize/group/sample it. Show every group and obtain the existing required quantities. State selected URL and representative capture counts: one starting URL does not mean one processed page.
-
-Consolidation: read prompt/request once, consult only ambiguous component reports, and do not reload all screenshots/raw discovery. Estimation: read its request once, then relevant component reports and child definitions in small batches, consulting linked measurements as needed. Save draft rationale/assumptions and completed keys so old reports need not be reread after compaction. Preserve complete inventory coverage and styling/typography. Never guess missing measurements to save tokens.
-
-## Middleware and verification
-
-Agent settings summarize at 24 messages, retain six recent messages (respecting tool-call/result pairs), cap summarizer input at 12,000 estimated tokens, and clear tool outputs at 12,000 estimated tokens retaining two messages. The message-count trigger avoids relying on approximate image token estimates. Do not add a token condition beside messages expecting OR: this platform combines fields within one trigger with AND. These settings are not a provider-token ceiling. Approximate counting, images, schemas and assembled requests can differ. Tool-output clearing alone does not guarantee removal of old images or assistant tool arguments; summarization must compact those older exchanges. Do not claim isolated per-tile sessions.
-
-After applying the recipe verify the destination agent imported these settings. Compare a fresh same-scope/model LangSmith run: input per call, calls per tile, cache creation/read, summary activity, retries and complete output quality. Billing stays external (null means unknown). Local tests cannot certify a saving percentage or visual accuracy equivalence. Report persistent large prompts without changing platform code or degrading discovery.
+Benchmark all three agents plus result-check costs on identical scope/model and check annotation/Build List quality. Parallelism primarily reduces latency and extra agents add overhead. Local tests cannot certify live concurrency, savings or visual accuracy equivalence. No platform changes or deployment.

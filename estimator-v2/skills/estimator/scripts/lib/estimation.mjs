@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {buildList,buildListCsv,buildListMarkdown,consolidationEntries,applyNativeConsolidation,saveManualMerge,resetConsolidation} from './buildlist.mjs';
-import {getRun,inRun,readJson,writeJson,exists} from './store.mjs';
+import {getRun,inRun,readJson,writeJson} from './store.mjs';
 import {urlGroupAccounting} from './urlplanstore.mjs';
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const esc=value=>String(value??'').replaceAll('|','\\|').replaceAll('\n',' ');
@@ -93,9 +93,7 @@ export async function exportInventory(id){
  const discovery=await readJson(inRun(id,'export/discovery.json'),null);
  const files=['export/report.md','export/discovery.json',...(discovery?.families??[]).flatMap(f=>[f.report,f.evidenceReport]),...(discovery?.captures??[]).flatMap(c=>[c.paths?.annotated,c.paths?.annotationData].filter(Boolean)),'export/build-list.json','export/build-list.csv','export/build-list.md','export/component-validation.json','export/quality.json',...(groups?['export/url-groups.json']:[]),...(estimates?['export/estimates.json','export/estimates.md']:[])];
  const manifest={version:'2.0.0',runId:id,entryPoint:'export/report.md',authoritativeEvidence:'export/discovery.json',componentReports:'export/components/',files,estimationStatus:estimates?.status??'awaiting-estimation',modelExecution:'kajoo-platform',modelCostUsd:null,coverage:groups?.coverageStatement??'Only supplied URLs and captured desktop states are covered; whole-site completeness is not established.'};
- const review=await readJson(inRun(id,'export/visual-review.json'),null);
- manifest.visualReview={status:review?(review.sourceDiscoveryHash===hash(discovery)?review.status:'stale'):'not-reviewed',pending:review?.pending??null,flagged:review?.flagged??null,readyForImplementation:false};
- if(await exists(inRun(id,'export/visual-review.json')))manifest.files.push('export/visual-review.json');
+ manifest.visualValidation={mode:'source-tile detection plus deterministic checks',pairedRegionReview:false,readyForImplementation:false};
  await writeJson(inRun(id,'export/delivery-manifest.json'),manifest);
  const report=inRun(id,'export/report.md');let text=await fs.readFile(report,'utf8').catch(e=>{if(e.code==='ENOENT')return '';throw e;});
  if(text){text=text.split('\n<!-- estimator-delivery -->')[0];text+='\n<!-- estimator-delivery -->\n## Build list and estimates\n\nRead [Build list](build-list.md), [CSV](build-list.csv), [estimate status](delivery-manifest.json)'+(estimates?` and [estimates (${estimates.status})](estimates.md)`:'; estimates await Kajoo analysis')+'.\n'+(groups?'\n'+groups.coverageStatement+' See [URL groups](url-groups.json).\n':'');await fs.writeFile(report,text,'utf8');}
@@ -106,6 +104,7 @@ export async function execute(id,command,args){
  if(command==='import-consolidation')return importConsolidation(id,await input(args['result-file']));
  if(command==='estimate')return prepareEstimates(id,args);
  if(command==='import-estimates')return importEstimates(id,await input(args['result-file']));
+ if(command==='assemble-estimates')return assembleEstimates(id,await input(args['parts-file']));
  if(command==='merge'){
   const keys=await input(args['keys-file']);const list=await buildList(id);
   if(!Array.isArray(keys)||keys.length<2||new Set(keys).size!==keys.length||keys.some(k=>!list.entries.some(e=>e.key===k)))throw new Error('Merge requires at least two distinct current build keys');
@@ -115,4 +114,18 @@ export async function execute(id,command,args){
  }
  if(command==='reset-merges'){await resetConsolidation(id,true);await refreshHandoff(id);await exportInventory(id);return {status:'ok'};}
  throw new Error('Unknown estimation operation');
+}
+
+export async function assembleEstimates(id,parts){
+ if(!Array.isArray(parts)||!parts.length||parts.length>1000||parts.some(p=>typeof p!=='string')||new Set(parts).size!==parts.length)throw new Error('Provide distinct run-relative estimate fragment paths');
+ const request=await readJson(inRun(id,'estimation/request.json'));
+ const result={requestId:request.requestId,assumptions:[],items:[]};let bytes=0;
+ for(const part of parts){
+  const file=inRun(id,part);bytes+=(await fs.stat(file)).size;if(bytes>4*1024*1024)throw new Error('Combined estimate fragments exceed 4 MiB');
+  const value=await readJson(file);
+  if(value.requestId!==request.requestId||!Array.isArray(value.assumptions)||!Array.isArray(value.items)||!value.items.length||value.items.length>10)throw new Error('Stale or invalid estimate fragment; include one to ten assigned items');
+  result.assumptions.push(...value.assumptions);result.items.push(...value.items);
+ }
+ result.assumptions=[...new Set(result.assumptions)];
+ return importEstimates(id,result);
 }

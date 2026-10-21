@@ -214,6 +214,9 @@ export async function importDetection(runId, requestId, resultFile, metadata = {
     }
     const pageComplete = await finishPage(run, current);
     const prepared = await prepareDetection(runId);
+    const checkpoint = await readJson(inRun(runId, 'discovery-checkpoint.json'), { completed: [] });
+    checkpoint.completed = checkpoint.completed.filter(stage => !['detect', 'report'].includes(stage));
+    await writeJson(inRun(runId, 'discovery-checkpoint.json'), checkpoint);
     const state = await saveWorkState(runId, { analysis: prepared });
     return { status: prepared.status, requestId, pageComplete, pending: prepared.pending, manifest: manifestPath, componentCount: result.components.length,
         reviewRequired: result.components.length === 0, ...(result.components.length === 0 ? { warning: 'Empty tile result: inspect this tile and confirm the saved emptyReason before continuing; do not restart capture.' } : {}),

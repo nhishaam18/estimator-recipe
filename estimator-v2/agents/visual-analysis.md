@@ -1,6 +1,6 @@
 ---
 name: Visual Analysis
-description: Inspects one desktop screenshot or paired annotation-review packet and saves evidence-bound visual findings. Returns only a compact file receipt.
+description: Inspects one assigned desktop screenshot tile and saves evidence-bound component detections. Returns only a compact file receipt.
 tools: []
 skills: ['estimator-visual-analysis']
 tags: [Sub Agent]

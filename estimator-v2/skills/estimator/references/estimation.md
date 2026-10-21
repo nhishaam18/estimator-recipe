@@ -12,3 +12,5 @@ Only a user-supplied rate via --rate and --currency yields monetary totals. Neve
 
 import-estimates validates complete inventory coverage and source binding. Inventory changes invalidate old estimates and replace their Markdown with a stale notice; prepare/import fresh estimates after merging/refinement. Uncertain evidence is explicitly provisional. Model API usage is available only through Kajoo traces and is not part of component labor pricing.
 
+
+Developer estimates at most ten unique items per fresh job. Save source-bound fragments and completed keys in estimation/progress.json. Once all keys are covered, assemble-estimates combines run-relative fragment paths and calls the existing source/coverage/range validator. Fragments stay out of Orchestrator context.

@@ -13,9 +13,8 @@ The run folder is returned by init and must be retained in run evidence and a co
 | shots/desktop | Original prepared full-page desktop screenshots |
 | analysis/desktop | Measured CSS, typography, assets and capture warnings |
 | analysis-requests/ | Native Kajoo prompts, tiles, hashes, imports and revision history |
+| visual-batches/ | Exclusive two-packet reservations, per-attempt assignments, import outcomes and errors |
 | llm/desktop | Validated merged detections, not a direct API cache |
-| review-requests/ / review-results/ | Source-bound full-width raw/annotated crops, prompts and immutable visual-review results |
-| export/visual-review.json | Current review counts/status and source hash; never overrides quality.json or certifies readiness |
 | consolidation/ | Native grouping request and immutable result snapshots |
 | estimation/ | Source-bound effort request and result snapshots |
 | browser-stop.json | Persistent browser circuit breaker; ordinary resume must not bypass it |
