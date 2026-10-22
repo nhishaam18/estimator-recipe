@@ -21,7 +21,8 @@ const help={commands:['setup --workspace <writable folder>','verify','init --sel
 help.commands.push('next --run <ID or folder> (compact saved checkpoint and one next packet)');
 help.commands.push('batch --run <folder> [--retry-request <id> --retry-kind transient|correction] [--correction-request <id>]', 'settle-batch --run <folder> --batch <id> --outcomes-file <JSON>', 'assemble-estimates --run <folder> --parts-file <JSON array of run-relative fragment paths>');
 help.commands.push('bootstrap --workspace <folder> (copy/install/verify once with persistent receipts)','job --file <absolute immutable job.json>','recover-capture --run <folder> --url <selected route> --reason failed|obstructed|lazy-incomplete [--diagnosis <observed evidence>]');
-help.commands.push('flow --id <stable step ID> --kind <job kind> --jobs-dir <absolute folder> [job options] (scripts create immutable jobs and execution checkpoints; no Developer agent)');
+help.commands.push('flow --kind <job kind> --jobs-dir <absolute folder> [job options] [--after <continueAfter>] [--id <explicit stable ID>] (omit ID for safe automatic identity; repeat identical arguments to reconcile)');
+help.commands.push('read-evidence --file <absolute file> [--pointer /json/field] [--offset 0] [--limit 4000] (bounded diagnostics; never conversation history)', 'map-urls --file <Firecrawl JSON> --output <URL-only JSON>');
 async function setup(){
  if(typeof args.workspace!=='string')throw new Error('setup requires --workspace <writable folder>');
  const workspace=path.resolve(args.workspace),runtime=path.join(workspace,'estimator-runtime','estimator');
@@ -39,6 +40,15 @@ async function main(){
   catch(error){print(error.receipt??{status:'blocked',reason:error.message,receiptFile:error.receiptPath,logPath:error.logPath});process.exitCode=2;}return;
  }
  assertRuntimeExecution({entrypoint:fileURLToPath(import.meta.url)});
+ if(command==='read-evidence'){print(await (await import('./lib/bounded-read.mjs')).readEvidence(args));return;}
+ if(command==='map-urls'){
+  if(typeof args.file!=='string'||typeof args.output!=='string')throw new Error('map-urls requires --file and --output');
+  if(path.resolve(args.file)===path.resolve(args.output))throw new Error('Use a separate output file');
+  const {urlOnlyDiscovery}=await import('./lib/urlplanning.mjs');
+  const value=urlOnlyDiscovery(JSON.parse(await fs.readFile(args.file,'utf8')));
+  await fs.writeFile(args.output,JSON.stringify(value,null,2)+'\n',{flag:'wx'});
+  print({status:'ok',file:path.resolve(args.output),count:value.links.length});return;
+ }
  if(command==='flow'){
   print(await (await import('./lib/script-flow.mjs')).executeFlow(args));return;
  }

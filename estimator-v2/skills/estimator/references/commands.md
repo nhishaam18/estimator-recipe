@@ -8,7 +8,7 @@ Read the advertised skill before resolving resources and invoke these commands w
 | --- | --- |
 | Writable setup | setup --workspace /workspace |
 | First-use copy/install/verify with reusable receipts | bootstrap --workspace /workspace |
-| Script-owned normal transition | flow --jobs-dir <absolute folder> --id <stable step ID> --kind <kind> <options>; see [flow contract](job-contract.md) |
+| Script-owned normal transition | flow --jobs-dir <absolute folder> [--id <explicit legacy ID>] [--after <continueAfter>] --kind <kind> <options>; see [flow contract](job-contract.md) |
 | Existing immutable job (compatibility/diagnosis) | job --file <absolute immutable job.json> |
 | One-route recovery after settlement | recover-capture --run <folder> --url <selected route> --reason failed\|obstructed\|lazy-incomplete --diagnosis <observed evidence> |
 | Dependency/browser check | verify |

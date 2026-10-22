@@ -4,7 +4,7 @@ Estimator invokes the packaged runtime directly with native bash. There is no De
 
 ## Normal commands
 
-Run node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --id <stable-step-id> --kind <kind> <options>. Use literal paths from bootstrap and previous receipts. A stable lowercase ID (max 80 characters) identifies one step; reuse it only to reconcile that identical step. Partial progress needs a NEW advance ID. Replayed output never authorizes redispatch.
+Run node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --kind <kind> <options>. Omit --id: scripts derive and persist a stable ID from the arguments. Identical commands reconcile the same operation and changed input-file contents are rejected. For status=partial, run flow --kind advance --run <same runDir> --after <continueAfter> with the same jobs-dir. Copy continueAfter exactly; repeating that command replays safely. Blocked/uncertain receipts do not authorize a new operation. Explicit legacy IDs remain supported. Replayed output never authorizes redispatch.
 
 | kind | Options | Script-controlled work |
 | --- | --- | --- |

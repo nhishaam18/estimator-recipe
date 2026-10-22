@@ -6,6 +6,15 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const list=(text,key)=>[...text.match(new RegExp(`^${key}: (.+)$`,'m'))[1].matchAll(/['"]([^'"]+)['"]/g)].map(m=>m[1]);
+
+test('URL-only discovery and bounded recovery agree across agent instructions',()=>{
+ const worker=read('agents/visual-analysis.md');assert.match(worker,/tokens: 30000/);assert.match(worker,/messages: 24/);assert.match(worker,/trimTokensToSummarize: 16000/);assert.equal((worker.match(/messages: 8/g)||[]).length,2);
+ for(const p of ['skills/estimator/SKILL.md','skills/estimator-orchestration/SKILL.md','skills/estimator/references/workflow.md','skills/estimator/references/url-planning.md','prompts/start.md']){
+  assert.doesNotMatch(read(p),/save the complete response|persist its complete result|save its complete JSON response/);
+ }
+ assert.match(read('skills/estimator-orchestration/SKILL.md'),/read-evidence/);
+ assert.match(read('skills/estimator-visual-analysis/SKILL.md'),/ONE re-read/);
+});
 test('canonical package has native final frontmatter and no pre-seeded workflow',()=>{
  assert.equal(JSON.parse(read('.kajoo/recipe.json')).name,'Estimator 2.0.0');
  assert(!fs.existsSync(path.join(root,'.kajoo/workflow.json')));

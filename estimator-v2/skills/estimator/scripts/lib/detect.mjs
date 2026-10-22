@@ -146,6 +146,7 @@ export async function prepareDetection(runId) {
             if (await loadLlm(runId, viewport, page.slug)) continue;
             const built = await pageRequests(run, viewport, page);
             for (const { request, prompt, jpeg } of built) {
+                if (Buffer.byteLength(prompt,'utf8') > 60000) throw new Error(`Packet prompt exceeds 60000 bytes for ${request.id}; preparation must reduce hints before dispatch`);
                 await mkdir(path.dirname(inRun(runId, request.image)), { recursive: true });
                 await writeFile(inRun(runId, request.image), jpeg);
                 await writeFile(inRun(runId, request.promptFile), prompt, 'utf8');

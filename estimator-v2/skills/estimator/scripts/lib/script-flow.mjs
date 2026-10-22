@@ -14,12 +14,20 @@ async function atomic(file,value){await fs.mkdir(path.dirname(file),{recursive:t
 
 export async function executeFlow(args,{execute=executeJob}={}){
  const execution=assertRuntimeExecution({entrypoint});
- if(typeof args.id!=='string'||!/^[a-z0-9][a-z0-9-]{0,79}$/.test(args.id))throw new Error('flow requires a stable lowercase --id; reuse it only to reconcile the same step');
+ if(args.id!==undefined&&(typeof args.id!=='string'||!/^[a-z0-9][a-z0-9-]{0,79}$/.test(args.id)))throw new Error('Invalid explicit --id; omit --id for a script-generated stable ID');
  if(!kinds.has(args.kind))throw new Error('flow requires a documented --kind');
- if(Object.keys(args).some(k=>!['id','jobs-dir',...Object.keys(options)].includes(k)))throw new Error('Unknown flow option');
+ if(Object.keys(args).some(k=>!['id','after','jobs-dir',...Object.keys(options)].includes(k)))throw new Error('Unknown flow option');
  if(typeof args['jobs-dir']!=='string'||!path.isAbsolute(args['jobs-dir']))throw new Error('flow requires an absolute --jobs-dir');
- const folder=path.resolve(args['jobs-dir']),file=path.join(folder,`${args.id}.json`);
- const job={schemaVersion:1,id:args.id,runtime:execution.runtime};
+ const folder=path.resolve(args['jobs-dir']);
+ if(args.after!==undefined){
+  if(args.id!==undefined||args.kind!=='advance'||typeof args.after!=='string'||!/^[a-z0-9][a-z0-9-]{0,79}$/.test(args.after))throw new Error('--after requires an automatic advance and a returned operationId');
+  const prior=JSON.parse(await fs.readFile(path.join(folder,'receipts',args.after,'receipt.json'),'utf8'));
+  const priorJob=JSON.parse(await fs.readFile(path.join(folder,`${args.after}.json`),'utf8'));
+  if(prior.status!=='partial'||(prior.runDir??priorJob.runDir)!==args.run)throw new Error('--after requires partial progress on the same run; blocked/uncertain work must be reconciled');
+ }
+ const identity=JSON.stringify(Object.entries(args).filter(([k])=>!['id','jobs-dir'].includes(k)).sort(([a],[b])=>a.localeCompare(b)));
+ const id=args.id??`${args.kind}-${digest(identity).slice(0,24)}`,file=path.join(folder,`${id}.json`);
+ const job={schemaVersion:1,id,runtime:execution.runtime};
  for(const [option,key] of Object.entries(options))if(args[option]!==undefined){
   if(typeof args[option]!=='string')throw new Error(`--${option} requires a value`);
   job[key]=key==='rate'?Number(args[option]):args[option];
@@ -40,5 +48,5 @@ export async function executeFlow(args,{execute=executeJob}={}){
   let previous={};try{previous=JSON.parse(await fs.readFile(checkpointFile,'utf8'));}catch(error){if(error.code!=='ENOENT')throw error;}
   await atomic(checkpointFile,{version:1,runtime:execution.runtime,runDir:receipt.runDir??job.runDir??previous.runDir,planDir:receipt.planDir??job.planDir??previous.planDir,planFingerprint:receipt.planFingerprint??job.planFingerprint??previous.planFingerprint,jobFile:file,receiptFile:receipt.receiptFile,status:receipt.status,batchId:receipt.batchId,counts:{imported:receipt.imported,failed:receipt.failed,pending:receipt.pending},packets:receipt.packets??[],next:receipt.next});
  }
- return {...receipt,checkpointFile};
+ return {...receipt,operationId:id,checkpointFile,...(receipt.status==='partial'?{continueAfter:id}:{})};
 }

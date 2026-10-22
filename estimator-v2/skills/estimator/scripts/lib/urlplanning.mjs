@@ -62,6 +62,12 @@ function discoveryLinks(raw, depth = 0) {
   throw new Error('Unrecognized Firecrawl Map response: expected links array');
 }
 
+export function urlOnlyDiscovery(raw) {
+  const links=discoveryLinks(raw).map(link=>typeof link==='string'?link:link?.url);
+  if(links.some(url=>typeof url!=='string'||!url.trim()))throw new Error('Firecrawl result contains an entry without a URL; do not silently drop it');
+  return {links};
+}
+
 function routePattern(pathname) {
   const dynamic = /^(?:\d+|[0-9a-f]{8,}(?:-[0-9a-f]+)*)$/i;
   const parts = pathname.split('/').filter(Boolean).map(part => dynamic.test(part) ? '*' : part);

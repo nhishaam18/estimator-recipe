@@ -9,6 +9,18 @@ import {executeFlow} from '../lib/script-flow.mjs';
 import {executeJob} from '../lib/job-execution.mjs';
 async function fixture(t){const root=await fs.mkdtemp(path.join(os.tmpdir(),'estimator-flow-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));return root;}
 
+test('automatic IDs replay safely and partial continuations advance exactly once',async t=>{
+ const root=await fixture(t),args={kind:'advance','jobs-dir':root,run:root};let calls=0;
+ const execute=file=>executeJob(file,{invoke:async()=>{calls++;return {status:'partial'};}});
+ const first=await executeFlow(args,{execute});assert.match(first.operationId,/^advance-[a-f0-9]{24}$/);
+ assert.equal((await executeFlow(args,{execute})).replayed,true);assert.equal(calls,1);
+ const next=await executeFlow({...args,after:first.continueAfter},{execute});assert.notEqual(next.operationId,first.operationId);assert.equal(calls,2);
+ assert.equal((await executeFlow({...args,after:first.continueAfter},{execute})).replayed,true);assert.equal(calls,2);
+ await assert.rejects(executeFlow({...args,run:path.join(root,'other'),after:first.operationId},{execute}),/same run/);
+ const saved=JSON.parse(await fs.readFile(first.receiptFile));saved.status='blocked';await fs.writeFile(first.receiptFile,JSON.stringify(saved));
+ await assert.rejects(executeFlow({...args,after:first.operationId},{execute}),/blocked/);
+});
+
 test('scripts construct immutable runtime-bound jobs and save their compact checkpoints',async t=>{
  const root=await fixture(t),args={id:'advance-001',kind:'advance','jobs-dir':root,run:path.join(root,'run')};
  let calls=0;const execute=file=>executeJob(file,{invoke:async()=>{calls++;return {status:'partial'};}});
