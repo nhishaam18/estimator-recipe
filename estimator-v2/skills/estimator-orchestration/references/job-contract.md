@@ -4,13 +4,13 @@ Estimator invokes the packaged runtime directly with native bash. There is no De
 
 ## Normal commands
 
-Run node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --kind <kind> <options>. Omit --id: scripts derive and persist a stable ID from the arguments. Identical commands reconcile the same operation and changed input-file contents are rejected. For status=partial, run flow --kind advance --run <same runDir> --after <continueAfter> with the same jobs-dir. Copy continueAfter exactly; repeating that command replays safely. Blocked/uncertain receipts do not authorize a new operation. Explicit legacy IDs remain supported. Replayed output never authorizes redispatch.
+Run node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --kind <kind> <options>. Omit --id: scripts derive a stable operation ID from the arguments; report and consolidation/estimate preparation also bind the current saved evidence revision. Repeat identical arguments on unchanged evidence only to reconcile the SAME step; a replay is not a new stage or permission to dispatch a worker. Changed report/inventory evidence gives a new preparation operation ID without guessing one. For status=partial, run flow --kind advance --run <same runDir> --after <continueAfter> with the same jobs-dir. Copy continueAfter exactly. Blocked/uncertain receipts do not authorize a new operation or automatic retry without a diagnosed evidence change. An explicit --id is for an existing legacy job only, not a routine command or a substitute for requestId/batchId.
 
 | kind | Options | Script-controlled work |
 | --- | --- | --- |
 | discover-plan | --url, --discovery-file, --runs-dir | Group complete saved Firecrawl output; return EVERY group and planFingerprint |
 | prepare | --plan, --plan-fingerprint, --quotas-file, --runs-dir; optional --name | Verify reviewed plan, freeze quotas, initialize/reuse run, advance through detection, reserve two packets |
-| advance | --run | Resume same checkpoint through detection and reserve when ready |
+| advance | --run, --after <continueAfter from a partial receipt> | Resume same run through detection and reserve when ready |
 | settle-batch | --run, --batch, --outcomes-file | Validate/import serially, retain siblings, reserve next only on successful nonempty settlement |
 | recover-capture | --run, --url, --reason; --diagnosis for observed gap | One selected route; failed, obstructed or lazy-incomplete |
 | report | --run | Script annotation/report assembly; pending detections block |
@@ -20,11 +20,13 @@ Run node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/
 | import-estimates | --run, --result-file | Validate/import native estimates |
 | assemble-estimates | --run, --parts-file | Assemble run-relative fragment files and validate complete coverage |
 
-Examples (replace illustrative values with actual saved paths):
+Normal examples (replace placeholders with actual saved paths; omit --id):
 ```sh
-node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --id prepare-001 --kind prepare --plan <planDir> --plan-fingerprint <planFingerprint> --quotas-file <quotasFile> --runs-dir <runsDir>
-node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --id settle-001 --kind settle-batch --run <runDir> --batch <batchId> --outcomes-file <outcomesFile>
+node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --kind prepare --plan <planDir> --plan-fingerprint <planFingerprint> --quotas-file <quotasFile> --runs-dir <runsDir>
+node <runtime>/scripts/cest.mjs flow --jobs-dir /workspace/estimator-config/jobs --kind settle-batch --run <runDir> --batch <batchId> --outcomes-file <outcomesFile>
 ```
+
+Identity boundaries: `runDir` is the absolute saved run folder; `operationId`/`continueAfter` identify one flow step; `batchId` identifies a visual reservation; 64-hex-character `requestId` identifies one screenshot analysis packet; `jobId` comes from the actual Kajoo run-agent result. Copy each from its own saved receipt. Never derive one from another, reuse a screenshot requestId as `--id`, or use a worker's `ready` text as a platform status. Estimation has a separate requestId in estimation/request.json; its `batch-001` IDs are for estimate packets, not visual reservations.
 
 ## Model return envelope
 
@@ -36,7 +38,7 @@ Only requestId, jobId, status and optional concise reason. Never {jobs:[...]}, p
 
 ## Durable state, replay and recovery
 
-Flow creates jobs/<id>.json and receipts/<id>/receipt.json. Checkpoints under coordination/<scope-hash>.json point to the exact runtime/run/plan, latest receipt, counts and pending packet paths. Keep user decisions and bootstrap/verification receipt paths alongside that checkpoint; restore those small pointers after summaries. A replay cannot roll back a later checkpoint.
+Flow creates jobs/<operationId>.json and receipts/<operationId>/receipt.json. Checkpoints under coordination/<scope-hash>.json point to the exact runtime/run/plan, latest receipt, counts and pending packet paths. Keep user decisions and bootstrap/verification receipt paths alongside that checkpoint; restore those small pointers after summaries. A replay cannot roll back a later checkpoint. `next/status` is diagnostic state, not a dispatch assignment; only a fresh visual-batches reservation supplies a writable per-attempt resultFile.
 
 Unknown flow options are rejected. Existing job --file remains for compatibility/diagnostics: schemaVersion:1, id, kind, optional runtime and camelCase fields matching the options above. Runtime binds to the executing tree. Cached receipts, input fingerprints, progress, command.json and stdout/stderr logs remain authoritative. Referenced input files must remain immutable; changed bytes under the same step fail.
 

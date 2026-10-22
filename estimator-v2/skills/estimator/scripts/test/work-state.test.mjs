@@ -31,14 +31,13 @@ async function fixture(t) {
  return {run,analysis};
 }
 
-test('compact work checkpoint exposes one tile, not the manifest or prompt body',async t=>{
+test('compact work checkpoint requires reservation instead of advertising an unbound draft path',async t=>{
  const {run,analysis}=await fixture(t);
  const state=await saveWorkState(run.id);
  assert.equal(state.analysis.pending,3);
- assert.equal(state.next.requestId,analysis.requests[0].id);
- assert.equal(state.next.promptFile,analysis.requests[0].promptFile);
- assert.equal(state.next.image,analysis.requests[0].image);
- assert(state.next.resultFile.endsWith('/draft.json'));
+ assert.equal(state.next.operation,'reserve-visual-batch');
+ assert.equal(state.next.command,'batch');
+ assert(!Object.hasOwn(state.next,'resultFile'));
  assert(!JSON.stringify(state).includes(analysis.requests[1].id));
  assert(!JSON.stringify(state).includes('Saved DOM hints'));
  assert(JSON.stringify(state).length<3500);
@@ -53,7 +52,7 @@ test('import returns the next packet and warns on empty analysis without erasing
  const receipt=await importDetection(run.id,first.id,file);
  assert.equal(receipt.componentCount,0);
  assert.equal(receipt.reviewRequired,true);
- assert.equal(receipt.next.requestId,analysis.requests[1].id);
+ assert.equal(receipt.next.operation,'reserve-visual-batch');
  assert.equal(receipt.pending,2);
  assert.equal((await readJson(inRun(run.id,'work-state.json'))).analysis.pending,2);
  assert(await fs.stat(inRun(run.id,`analysis-results/${first.id}/response.json`)));
@@ -85,13 +84,13 @@ test('CLI rejects unfinished and entirely empty reports and leaves an actionable
  assert.equal(await fs.stat(inRun(run.id,'export/report.md')).catch(()=>null),null);
 });
 
-test('next CLI returns a bounded packet while preserving all manifest records',async t=>{
+test('next CLI returns a bounded reservation instruction while preserving all manifest records',async t=>{
  const {run,analysis}=await fixture(t);
  const receipt=await call(['detect','--run',run.id]);
  assert.equal(receipt.code,0,receipt.err);assert.equal(receipt.json.pending,3);
- assert.equal(receipt.json.next.requestId,analysis.requests[0].id);
+ assert.equal(receipt.json.next.operation,'reserve-visual-batch');
  assert(!Object.hasOwn(receipt.json,'requests'));assert(!Object.hasOwn(receipt.json,'pages'));
  const next=await call(['next','--run',run.id]);assert.equal(next.code,0,next.err);
- assert.equal(next.json.next.requestId,analysis.requests[0].id);
+ assert.equal(next.json.next.operation,'reserve-visual-batch');
  assert.equal((await readJson(inRun(run.id,'analysis-requests/manifest.json'))).requests.length,3);
 });

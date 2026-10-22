@@ -14,14 +14,15 @@ export async function saveWorkState(id, {analysis} = {}) {
  const stages=['scan','group','capture','detect','report'];
  const completed=checkpoint.completed??[],stage=stages.find(s=>!completed.includes(s));
  const request=manifest?.requests?.[0];
- const next=request?{operation:'inspect-tile',requestId:request.id,promptFile:request.promptFile,image:request.image,resultFile:`analysis-results/${request.id}/draft.json`}
+ // Only visual-batches may assign a per-attempt result path and authorize dispatch.
+ const next=request?{operation:'reserve-visual-batch',command:'batch',runDir}
   :stage?{operation:'resume-pipeline',through:stage==='detect'&&manifest?.pending===0?'report':stage,minutes:4}
   :{operation:'inspect-quality-and-estimate',report:'export/report.md',quality:'export/quality.json'};
  const state={version:1,runId:id,runDir,completed,
   status:request?'awaiting-analysis':stage?'partial':quality?.status??'awaiting-review',
   counts:{selectedUrls:run.urls.length,representativeUrls:new Set(Object.values(run.selection??{}).flat()).size,failedPages:run.pages.filter(p=>Object.values(p.viewports).some(v=>v.status==='failed')).length},
   analysis:{pending:manifest?.pending??null,manifest:'analysis-requests/manifest.json'},
-  sources:{input:'input/urls.json',plan:'input/url-plan.json',selection:'input/url-selection.json',notes:'execution-notes.json'},
+  sources:{input:'input/urls.json',plan:'input/url-plan.json',selection:'input/url-selection.json'},
   outputs:{report:'export/report.md',quality:'export/quality.json',components:'export/components/',delivery:'export/delivery-manifest.json',batchIndex:'visual-batches/index.json',estimationStatus:delivery?.estimationStatus??'not-prepared'},next};
  // A request manifest may survive a recapture/invalidation. Do not dispatch it before capture completes.
  if(stage&&stages.indexOf(stage)<stages.indexOf('detect')){

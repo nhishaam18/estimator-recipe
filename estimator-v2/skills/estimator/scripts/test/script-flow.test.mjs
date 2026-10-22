@@ -20,6 +20,21 @@ test('automatic IDs replay safely and partial continuations advance exactly once
  const saved=JSON.parse(await fs.readFile(first.receiptFile));saved.status='blocked';await fs.writeFile(first.receiptFile,JSON.stringify(saved));
  await assert.rejects(executeFlow({...args,after:first.operationId},{execute}),/blocked/);
 });
+test('report and estimate preparation get new automatic IDs only when saved evidence changes',async t=>{
+ const root=await fixture(t),run=path.join(root,'run'),jobs=path.join(root,'jobs');
+ await fs.mkdir(path.join(run,'visual-batches'),{recursive:true});await fs.mkdir(path.join(run,'export'),{recursive:true});
+ await fs.writeFile(path.join(run,'visual-batches/index.json'),'{}');
+ await fs.writeFile(path.join(run,'export/discovery.json'),'{}');
+ let calls=0;const execute=file=>executeJob(file,{invoke:async()=>{calls++;return {status:'blocked',reason:'synthetic pending evidence'};}});
+ const report={kind:'report','jobs-dir':jobs,run};
+ const first=await executeFlow(report,{execute});assert.equal((await executeFlow(report,{execute})).replayed,true);assert.equal(calls,1);
+ await fs.writeFile(path.join(run,'visual-batches/index.json'),'{"changed":true}');
+ const second=await executeFlow(report,{execute});assert.notEqual(second.operationId,first.operationId);assert.equal(calls,2);
+ const estimate={kind:'prepare-estimates','jobs-dir':jobs,run};
+ const prepared=await executeFlow(estimate,{execute});assert.equal((await executeFlow(estimate,{execute})).replayed,true);assert.equal(calls,3);
+ await fs.writeFile(path.join(run,'export/discovery.json'),'{"changed":true}');
+ assert.notEqual((await executeFlow(estimate,{execute})).operationId,prepared.operationId);assert.equal(calls,4);
+});
 
 test('scripts construct immutable runtime-bound jobs and save their compact checkpoints',async t=>{
  const root=await fixture(t),args={id:'advance-001',kind:'advance','jobs-dir':root,run:path.join(root,'run')};

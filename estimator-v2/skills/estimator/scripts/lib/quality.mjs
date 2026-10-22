@@ -9,15 +9,15 @@ export function assessQuality(data) {
                 reason: 'Identifiable component retained; listed parts did not fully render. Missing appearance is unverified; no automatic recapture or model retry.' });
         for (const item of (data.annotationItems??[]).filter(a=>a.captureId===capture.id && a.kind==='component' && a.annotationOnly && !data.occurrences.some(o=>o.captureId===capture.id && o.selector===a.selector))) {
             add('unmodeled-composite-boundary',capture,{annotationId:item.id,selector:item.selector,name:item.name,box:item.box,
-                reason:'A DOM-backed composite item is annotated but missing from the implementation inventory. Inspect its screenshot and DOM, then add a supported native detection or explain why it remains an owned part; do not silently promote it to a CMS type.'},'reanalyse-tile');
+                reason:'A DOM-backed composite item is annotated but missing from the implementation inventory. Assign its affected screenshot tile to Visual Analysis for a bounded correction; scripts reconcile saved DOM evidence. If unresolved, retain the gap rather than promoting it silently to a CMS type.'},'reanalyse-tile');
         }
         for (const tile of capture.nativeAnalysis?.tileReviews ?? []) if (!tile.componentCount) add('empty-tile-analysis', capture,
-            { requestIds: [tile.requestId], reason: `Tile was declared empty: ${tile.emptyReason ?? 'no reason saved'}. Verify against its image and saved DOM.` }, 'reanalyse-tile');
+            { requestIds: [tile.requestId], reason: `Tile was declared empty: ${tile.emptyReason ?? 'no reason saved'}. Assign its image to Visual Analysis for a bounded correction; the orchestrator does not inspect images.` }, 'reanalyse-tile');
         const uncertain = data.detections.filter(d => d.captureId === capture.id && d.validation?.role === 'uncertain');
         for (const d of uncertain) add('uncertain-boundary', capture, { detectionId: d.id, sourceId: d.sourceId, name: d.name, reason: d.validation.reason }, 'reanalyse-tile');
         if (capture.unownedMeaningfulElements) add('unowned-elements', capture, { count: capture.unownedMeaningfulElements,
-            reason: 'Meaningful saved DOM content has no validated component owner. Inspect the image and DOM; do not invent component types merely to close this finding.' }, 'reanalyse-tile');
-        if (!data.occurrences.some(o => o.captureId === capture.id)) add('no-validated-components', capture, { reason: 'No implementation boundary was validated in this capture; inspect all tiles, including any empty responses.' }, 'reanalyse-tile');
+            reason: 'Meaningful saved DOM content has no validated component owner. Use an affected tile reservation for Visual Analysis when a request ID exists; scripts retain DOM evidence. Do not invent component types merely to close this finding.' }, 'reanalyse-tile');
+        if (!data.occurrences.some(o => o.captureId === capture.id)) add('no-validated-components', capture, { reason: 'No implementation boundary was validated in this capture. Reserve affected tiles for bounded Visual Analysis correction when request IDs exist; otherwise retain the gap.' }, 'reanalyse-tile');
     }
     for (const c of data.coverage) {
         const capture = data.captures.find(x => x.id === c.captureId);
@@ -30,5 +30,5 @@ export function assessQuality(data) {
     const reanalysisRequestIds = [...new Set(findings.filter(f => f.action === 'reanalyse-tile').flatMap(f => f.requestIds ?? []))];
     return { version: 1, status: findings.some(f => f.action === 'reanalyse-tile') ? 'needs-reanalysis' : 'provisional', readyForImplementation: false,
         scope: 'Automated structural evidence checks do not establish semantic completeness, visual fidelity, CMS schema acceptance or actual image inspection.',
-        findings, reanalysisRequestIds, correctionPolicy: 'Re-inspect affected tile images and prompts, correct supported detections with import-result --replace, then rebuild report. Make at most two correction passes per tile in one execution; retain unresolved findings and end provisional.' };
+        findings, reanalysisRequestIds, correctionPolicy: 'For affected request IDs, reserve targeted Visual Analysis corrections through the documented visual batch command, settle verified platform outcomes through flow settle-batch, then rebuild the report. Make at most two correction passes per tile in one execution; retain unresolved findings and end provisional. The orchestrator does not inspect images or use low-level import-result --replace in normal execution.' };
 }

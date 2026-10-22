@@ -11,6 +11,20 @@ const options={kind:'kind',run:'runDir','runs-dir':'runsDir',plan:'planDir','pla
 const kinds=new Set(['discover-plan','prepare','advance','settle-batch','recover-capture','report','prepare-consolidation','import-consolidation','prepare-estimates','import-estimates','assemble-estimates']);
 const digest=text=>createHash('sha256').update(text).digest('hex');
 async function atomic(file,value){await fs.mkdir(path.dirname(file),{recursive:true});const temp=`${file}.${randomUUID()}.tmp`;await fs.writeFile(temp,JSON.stringify(value,null,2)+'\n');await fs.rename(temp,file);}
+async function sourceRevision(args){
+ if(typeof args.run!=='string'||!path.isAbsolute(args.run))return null;
+ const files=args.kind==='report'?['visual-batches/index.json','analysis-requests/manifest.json']
+  :args.kind==='prepare-consolidation'?['export/build-list.json','export/discovery.json']
+  :args.kind==='prepare-estimates'?['export/build-list.json','export/discovery.json','export/quality.json']:[];
+ if(!files.length)return null;
+ const revisions=[];
+ for(const relative of files){
+  const file=path.join(args.run,relative);
+  try{revisions.push([relative,digest(await fs.readFile(file))]);}
+  catch(error){if(error.code!=='ENOENT')throw error;revisions.push([relative,'missing']);}
+ }
+ return digest(JSON.stringify(revisions));
+}
 
 export async function executeFlow(args,{execute=executeJob}={}){
  const execution=assertRuntimeExecution({entrypoint});
@@ -25,7 +39,9 @@ export async function executeFlow(args,{execute=executeJob}={}){
   const priorJob=JSON.parse(await fs.readFile(path.join(folder,`${args.after}.json`),'utf8'));
   if(prior.status!=='partial'||(prior.runDir??priorJob.runDir)!==args.run)throw new Error('--after requires partial progress on the same run; blocked/uncertain work must be reconciled');
  }
- const identity=JSON.stringify(Object.entries(args).filter(([k])=>!['id','jobs-dir'].includes(k)).sort(([a],[b])=>a.localeCompare(b)));
+ const entries=Object.entries(args).filter(([k])=>!['id','jobs-dir'].includes(k)).sort(([a],[b])=>a.localeCompare(b));
+ const revision=args.id===undefined?await sourceRevision(args):null;
+ const identity=JSON.stringify(revision===null?entries:{options:entries,sourceRevision:revision});
  const id=args.id??`${args.kind}-${digest(identity).slice(0,24)}`,file=path.join(folder,`${id}.json`);
  const job={schemaVersion:1,id,runtime:execution.runtime};
  for(const [option,key] of Object.entries(options))if(args[option]!==undefined){

@@ -7,7 +7,7 @@ The run folder is returned by init and must be retained in run evidence and a co
 | run.json / discovery-checkpoint.json | Scope, desktop capture state, saved stage progress and Kajoo usage unavailable markers |
 | work-state.json | Derived compact progress, source paths and one next operation |
 | execution-error.json | Latest failed command and reason; checkpoint directs diagnosis before resuming |
-| execution-notes.json | Small agent-written resume decisions, visual-review outcomes and unresolved findings |
+| execution-notes.json (optional) | Agent-written resume decisions only if explicitly saved; its absence is normal |
 | input/ | Supplied URL list or frozen discovery plan/sample |
 | html/desktop, rects/desktop, scan/desktop | Prepared DOM, measured geometry and structural scans |
 | shots/desktop | Original prepared full-page desktop screenshots |
@@ -16,7 +16,7 @@ The run folder is returned by init and must be retained in run evidence and a co
 | visual-batches/ | Exclusive two-packet reservations, per-attempt assignments, import outcomes and errors |
 | llm/desktop | Validated merged detections, not a direct API cache |
 | consolidation/ | Native grouping request and immutable result snapshots |
-| estimation/ | Source-bound effort request and result snapshots |
+| estimation/ | Source-bound effort request, script-owned progress.json, assigned batches and validated fragments |
 | browser-stop.json | Persistent browser circuit breaker; ordinary resume must not bypass it |
 | export/report.md | Human/agent entry report with named component links |
 | export/components/ | Numbered readable component reports and evidence appendices |

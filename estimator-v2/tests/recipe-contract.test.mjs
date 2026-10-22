@@ -85,6 +85,22 @@ test('scripts own routine execution with shared contracts and durable retention 
  assert.match(read('skills/estimator/references/context-budget.md'),/not provider token ceilings/);
  assert.match(read('skills/estimator-orchestration/SKILL.md'),/Inline-only output has no implicit file handle/);
 });
+test('resume instructions distinguish flow IDs from visual assignments and avoid history or missing files',()=>{
+ const contract=read('skills/estimator/references/job-contract.md');
+ assert.match(contract,/operationId.*batchId.*requestId.*jobId/s);
+ assert.match(contract,/saved evidence revision/);
+ assert.doesNotMatch(contract,/flow[^\n]*--id (?:prepare|settle)-001/);
+ assert.match(contract,/only a fresh visual-batches reservation supplies a writable per-attempt resultFile/);
+ const context=read('skills/estimator/references/context-budget.md');
+ assert.match(context,/URL-only JSON/);assert.doesNotMatch(context,/Save complete Firecrawl output/);
+ const commands=read('skills/estimator/references/commands.md');
+ assert.match(commands,/next\/status.*NOT a worker assignment/);
+ assert.match(read('skills/estimator/references/outputs.md'),/execution-notes\.json \(optional\)/);
+ const estimation=read('skills/estimator/references/estimation.md');
+ assert.match(estimation,/without loading the full request\.json/);
+ assert.match(read('skills/estimator/references/handoff-contract.md'),/Do not have the orchestrator inspect images/);
+ assert.match(read('skills/estimator/scripts/lib/quality.mjs'),/reserve targeted Visual Analysis corrections/);
+});
 
 test('all component types retain identifiable partial renders without adding another model pass',()=>{
  const worker=read('skills/estimator-visual-analysis/SKILL.md');assert.match(worker,/ANY identifiable section or inner component/);assert.match(worker,/nonblocking/);

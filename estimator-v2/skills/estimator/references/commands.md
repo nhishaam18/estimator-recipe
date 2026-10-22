@@ -17,7 +17,7 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Approved Firecrawl sample | init --selection <plan folder> --name <name> |
 | Compare/group | all --run <folder> --through group --minutes 4 |
 | Capture/request preparation | all --run <folder> --through detect --minutes 4 |
-| Import native analysis | import-result --run <folder> --request <id> --result-file <JSON> [--replace] |
+| Import native analysis (low-level diagnostic compatibility only; normal flow uses settle-batch) | import-result --run <folder> --request <id> --result-file <JSON> [--replace] |
 | Annotation/report | all --run <folder> --through report --minutes 4 |
 | Rebuild report | report --run <folder> |
 | Consolidate list | consolidate --run <folder>, then import-consolidation --run <folder> --result-file <JSON> |
@@ -26,7 +26,7 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Estimate preparation | estimate --run <folder> [--target <explicit user CMS/stack override>] [--rate <user hourly rate> --currency <ISO code>] |
 | Estimate import | import-estimates --run <folder> --result-file <JSON> |
 | Progress | status --run <folder> |
-| Compact resume / next tile | next --run <folder> |
+| Compact diagnostic resume state | next --run <folder>; reserve with batch before any worker dispatch |
 | Reserve two visual packets | batch --run <folder> |
 | Import verified worker outcomes serially | settle-batch --run <folder> --batch <id> --outcomes-file <JSON> |
 | Diagnose/retry a failed packet | batch --run <folder> --retry-request <id> --retry-kind transient\|correction |
@@ -37,11 +37,11 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Finalize recorded batches | estimate-finish --run <folder> |
 
 
-Detection/import receipts return one next packet and counts. Use next after resume, not between successful imports. Resolve prompt/image/result paths under the run folder. work-state.json saves derived progress; execution-notes.json holds compact decisions, job outcomes and quality gaps. See [context budget](context-budget.md). Wait for one bounded foreground command to exit; never background/poll/relaunch an active pipeline.
+Detection/import receipts return counts and a suggested next operation. `next/status` is diagnostic state only: its pending request is NOT a worker assignment. Only a fresh visual-batches reservation supplies the per-attempt resultFile and permits dispatch. Resolve its prompt/image/result paths under the run folder. work-state.json saves derived progress; optional execution-notes.json may hold compact agent decisions if actually written. See [context budget](context-budget.md). Wait for one bounded foreground command to exit; never background/poll/relaunch an active pipeline.
 
 Desktop is enforced, not just a default. --viewports mobile or mixed viewports is rejected. --model on init is rejected; configure the image-capable model in Kajoo. On import-result, optional --model and --trace-id record actual analysis provenance only, never choose or call a model.
 
-awaiting-analysis means scripts reserve packets; Estimator dispatches fresh Visual Analysis workers, then directly runs flow settle-batch for serial imports and the next reservation. No Developer execution agent. awaiting-consolidation/estimation means Estimator reads the bounded saved text request, reasons over relevant reports, writes source-bound decisions/fragments and runs script validation/import. It is not a request for user approval. Complete all pending tile imports before reporting. Keep quality correction passes bounded to two per affected tile. Browser stages honor a persisted stop; --retry-browser is an explicit operator action after inspection, never a resume default. Do not overlap operations; an interrupted lock requires checking its PID has exited before removal. Persist run/plan paths in saved run evidence and reuse them instead of repeating init.
+awaiting-analysis requires a visual-batches reservation before Estimator dispatches fresh Visual Analysis workers; flow settle-batch imports serially and reserves the next work. No Developer execution agent. Consolidation reads its bounded saved request once. Estimation reads one script-assigned packet at a time with estimate-next / estimate-record, then estimate-finish; do not read the complete estimation request as a resume method. It is not a request for user approval. Complete all pending tile imports before reporting. Keep quality correction passes bounded to two per affected tile. Browser stages honor a persisted stop; --retry-browser is an explicit operator action after inspection, never a resume default. Do not overlap operations; an interrupted lock requires checking its PID has exited before removal. Persist run/plan paths in saved run evidence and reuse them instead of repeating init.
 
 
 Every URL intake starts with the Firecrawl MCP Map result, then plan/select and init --selection. The scripts consume the saved MCP response; they do not call Firecrawl directly. Sitecore is the automatic estimation target unless explicitly overridden; do not ask which CMS to use. Low-level init --urls-file remains for fixtures/diagnostics, not as a recipe intake path or Firecrawl fallback.

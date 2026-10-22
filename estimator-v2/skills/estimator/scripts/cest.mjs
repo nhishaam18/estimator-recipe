@@ -194,11 +194,11 @@ async function main(){
    }
    if(stage==='report'){
     const analysis=await (await import('./lib/detect.mjs')).prepareDetection(id);
-    if(analysis.pending)throw new Error(`Report blocked: ${analysis.pending} screenshot analyses pending; use next and import-result, then resume. Do not restart capture.`);
+    if(analysis.pending)throw new Error(`Report blocked: ${analysis.pending} screenshot analyses pending; reconcile any active visual batch, otherwise reserve with batch, then settle verified outcomes through flow settle-batch. Do not dispatch from next/status or restart capture.`);
     const {loadLlm}=await import('./lib/detect.mjs');
     let componentCount=0;
     for(const [vp,urls] of Object.entries(run.selection))for(const url of urls){const page=run.pages.find(p=>p.url===url);if(page)componentCount+=(await loadLlm(id,vp,page.slug))?.components.length??0;}
-    if(!componentCount)throw new Error('Report blocked: all imported screenshot results are empty. Inspect saved tiles and correct affected results with import-result --replace; do not restart capture or claim a complete empty Build List.');
+    if(!componentCount)throw new Error('Report blocked: all imported screenshot results are empty. Diagnose the affected request IDs, reserve targeted visual corrections through batch --correction-request and settle verified outcomes through flow settle-batch; do not restart capture or claim a complete empty Build List.');
     const fresh=await store.getRun(id);const {buildPageData}=await import('./lib/pagedata.mjs');const {drawAnnotated}=await import('./lib/annotations.mjs');const {selectAnnotations}=await import('./lib/annotation-selection.mjs');
     for(const p of fresh.pages)for(const vp of fresh.viewports){
      if(p.viewports[vp]?.status!=='ok'||!types.hasShot(p.viewports[vp]))continue;
@@ -214,7 +214,7 @@ async function main(){
      await store.writeJson(store.inRun(id,`export/annotated/${vp}/${p.slug}.json`),ledger);
     }
     const exported=await (await import('./lib/handoff.mjs')).exportHandoff(id);
-    if(!exported.summary.families)throw new Error('Report blocked: refinement produced an empty Build List. Inspect detections and validation in export/discovery.json and correct affected analysis; do not recapture successful pages or claim completion.');
+    if(!exported.summary.families)throw new Error('Report blocked: refinement produced an empty Build List. Use bounded read-evidence on named discovery validation fields and reserve a targeted Visual Analysis correction only for an affected request ID; otherwise retain this blocker. Do not read the full discovery file, recapture successful pages or claim completion.');
     const data=await store.readJson(store.inRun(id,'export/discovery.json'));
     const quality=await (await import('./lib/quality.mjs')).assessQuality(data);
     await store.writeJson(store.inRun(id,'export/quality.json'),quality);
