@@ -20,6 +20,7 @@ const print=value=>process.stdout.write(JSON.stringify(value)+'\n');
 const help={commands:['setup --workspace <writable folder>','verify','init --selection <approved Firecrawl plan folder> [--name <name>]','scan | group | capture | detect | report --run <ID or absolute run folder>','import-result --run <ID or folder> --request <request ID> --result-file <saved JSON> [--model <actual Kajoo model name>] [--trace-id <trace>]','all --run <ID or folder> [--through group|capture|detect|report] [--minutes 4]','plan --url <seed> --discovery-file <saved Firecrawl JSON>','select --plan <folder> --quotas-file <user choices JSON>','consolidate | estimate --run <folder>','import-consolidation | import-estimates --run <folder> --result-file <JSON>','merge --run <folder> --keys-file <JSON array> --name <label>','reset-merges --run <folder>','status --run <ID or folder>'],scope:'The Kajoo skill always obtains a saved Firecrawl Map response, groups it and freezes approved sample quantities; scripts process the selected URLs and prepare/import screenshot analysis; the configured Kajoo agent performs model reasoning. No direct model API, provider key, CMS mutation or code generation.'};
 help.commands.push('next --run <ID or folder> (compact saved checkpoint and one next packet)');
 help.commands.push('batch --run <folder> [--retry-request <id> --retry-kind transient|correction] [--correction-request <id>]', 'settle-batch --run <folder> --batch <id> --outcomes-file <JSON>', 'assemble-estimates --run <folder> --parts-file <JSON array of run-relative fragment paths>');
+help.commands.push('estimate-next --run <folder> [--size 1..10] (saved bounded packet)', 'estimate-record --run <folder> --result-file <JSON> (validate and checkpoint assigned batch)', 'estimate-finish --run <folder> (assemble recorded fragments)');
 help.commands.push('bootstrap --workspace <folder> (copy/install/verify once with persistent receipts)','job --file <absolute immutable job.json>','recover-capture --run <folder> --url <selected route> --reason failed|obstructed|lazy-incomplete [--diagnosis <observed evidence>]');
 help.commands.push('flow --kind <job kind> --jobs-dir <absolute folder> [job options] [--after <continueAfter>] [--id <explicit stable ID>] (omit ID for safe automatic identity; repeat identical arguments to reconcile)');
 help.commands.push('read-evidence --file <absolute file> [--pointer /json/field] [--offset 0] [--limit 4000] (bounded diagnostics; never conversation history)', 'map-urls --file <Firecrawl JSON> --output <URL-only JSON>');
@@ -113,7 +114,7 @@ async function main(){
  }
  if(typeof args.run!=='string')throw new Error('--run is required');
  let id=args.run;if(/[\\/]/.test(id)){const folder=path.resolve(id);process.env.CEST_RUNS_DIR=path.dirname(folder);id=path.basename(folder);}
- const estimateCommands=['consolidate','import-consolidation','estimate','import-estimates','assemble-estimates','merge','reset-merges'];
+ const estimateCommands=['consolidate','import-consolidation','estimate','estimate-next','estimate-record','estimate-finish','import-estimates','assemble-estimates','merge','reset-merges'];
  const batchCommands=['batch','settle-batch'];
  await store.getRun(id); // Reject legacy/mixed viewport runs before any mutation.
  if(command==='status'||command==='next'){

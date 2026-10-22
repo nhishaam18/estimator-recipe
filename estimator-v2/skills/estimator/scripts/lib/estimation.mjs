@@ -57,8 +57,63 @@ export async function prepareEstimates(id,args={}){
  if(rate!==null&&(typeof currency!=='string'||!/^[A-Z]{3}$/.test(currency)))throw new Error('--currency requires three uppercase letters when a rate is supplied');
  const request={kind:'labor-estimates',version:1,runId:id,target,rate,currency,evidenceDigest:await evidenceDigest(id),entries};request.requestId=hash(request);
  await writeJson(inRun(id,'estimation/request.json'),request);
- await fs.writeFile(inRun(id,'estimation/prompt.txt'),`Estimate implementation effort using Kajoo native reasoning. Read export/report.md, relevant export/components/*.md and linked evidence before estimating. Target: ${target}. Work is desktop only; do not price mobile implementation. Each unique component is built ONCE regardless of occurrence count. Parent hours exclude implementation already counted for independently listed children; include only composition/integration effort in the parent. Include modeling, desktop rendering and component-level QA in the range and explain assumptions and unknowns. No code generation, invented measured facts, fabricated pricing or external API calls. A range is a provisional model judgment, never a quote. Return {"requestId":"${request.requestId}","assumptions":["..."],"items":[{"key":"exact build key","lowHours":1,"likelyHours":2,"highHours":4,"rationale":"...","exclusions":["..."]}]}. Include every request entry exactly once. Currency/rate are script-controlled user inputs and must not be inferred. Missing design/CMS information must widen ranges and be disclosed. Shared infrastructure, migration/content entry, integrations, deployment and non-component project work are excluded unless explicitly scoped; state that in assumptions.`, 'utf8');
- return {status:'awaiting-estimation',request:'estimation/request.json',prompt:'estimation/prompt.txt',requestId:request.requestId,components:entries.length,rate,currency};
+ await fs.writeFile(inRun(id,'estimation/prompt.txt'),`Estimate implementation effort using Kajoo native reasoning. Run estimate-next and read only its assigned packet, component reports, linked child reports and evidence. Target: ${target}. Work is desktop only; do not price mobile implementation. Each unique component is built ONCE regardless of occurrence count. Parent hours exclude implementation already counted for independently listed children; include only composition/integration effort in the parent. Include modeling, desktop rendering and component-level QA in the range and explain assumptions and unknowns. No code generation, invented measured facts, fabricated pricing or external API calls. A range is a provisional model judgment, never a quote. For each packet return {"requestId":"${request.requestId}","batchId":"the assigned batch ID","assumptions":["..."],"items":[{"key":"exact assigned build key","lowHours":1,"likelyHours":2,"highHours":4,"rationale":"...","exclusions":["..."]}]}. Include exactly the assigned packet keys; estimate-record checks them. Currency/rate are script-controlled user inputs and must not be inferred. Missing design/CMS information must widen ranges and be disclosed. Shared infrastructure, migration/content entry, integrations, deployment and non-component project work are excluded unless explicitly scoped; state that in assumptions. Do not read conversation history or completed packets to resume.`, 'utf8');
+ const previous=await readJson(inRun(id,'estimation/progress.json'),null);
+ if(previous?.requestId!==request.requestId)await writeJson(inRun(id,'estimation/progress.json'),{version:1,requestId:request.requestId,batchSize:null,completedKeys:[],fragments:[],assumptions:[]});
+ return {status:'awaiting-estimation',request:'estimation/request.json',prompt:'estimation/prompt.txt',progress:'estimation/progress.json',requestId:request.requestId,components:entries.length,rate,currency,next:'estimate-next --run <run folder>'};
+}
+async function currentEstimateState(id){
+ const request=await readJson(inRun(id,'estimation/request.json'));
+ const current={...request,evidenceDigest:await evidenceDigest(id),entries:snapshot((await buildList(id)).entries)};delete current.requestId;
+ if(hash(current)!==request.requestId)throw new Error('Stale estimate request; run estimate again after inventory/evidence changes');
+ const progress=await readJson(inRun(id,'estimation/progress.json'),null);
+ if(!progress||progress.requestId!==request.requestId)throw new Error('Missing or stale estimation progress; run estimate again');
+ return {request,progress};
+}
+function assignedBatch(request,progress){
+ const done=new Set(progress.completedKeys),remaining=request.entries.filter(e=>!done.has(e.key));
+ const number=progress.fragments.length+1;
+ return {batchId:`batch-${String(number).padStart(3,'0')}`,entries:remaining.slice(0,progress.batchSize)};
+}
+export async function nextEstimateBatch(id,{size}={}){
+ const {request,progress}=await currentEstimateState(id);
+ size=size??progress.batchSize??5;
+ if(!Number.isInteger(size)||size<1||size>10)throw new Error('Estimate batch size must be 1–10');
+ if(progress.batchSize!==null&&progress.batchSize!==size)throw new Error('Resume with the original estimate batch size');
+ if(progress.batchSize===null){progress.batchSize=size;await writeJson(inRun(id,'estimation/progress.json'),progress);}
+ const batch=assignedBatch(request,progress);
+ if(!batch.entries.length)return {status:'ready-to-finalize',requestId:request.requestId,completed:progress.completedKeys.length,total:request.entries.length,next:'estimate-finish --run <run folder>'};
+ const discovery=await readJson(inRun(id,'export/discovery.json'),{});
+ const packet={version:1,requestId:request.requestId,batchId:batch.batchId,target:request.target,entries:batch.entries.map(e=>({key:e.key,name:e.name,level:e.level,contains:e.contains,children:e.children,hosts:e.hosts,pages:e.pages,instances:e.instances,sourceReports:(discovery.families??[]).filter(f=>f.buildListId===e.id||e.aliases?.includes(f.name)).flatMap(f=>[f.report,f.evidenceReport].filter(Boolean))})),quality:'export/quality.json',overview:'export/report.md'};
+ const file=`estimation/batches/${batch.batchId}.json`;
+ await writeJson(inRun(id,file),packet);
+ return {status:'awaiting-estimation',requestId:request.requestId,batchId:batch.batchId,packet:file,keys:batch.entries.map(e=>e.key),completed:progress.completedKeys.length,total:request.entries.length};
+}
+export async function recordEstimateBatch(id,resultFile){
+ const {request,progress}=await currentEstimateState(id),stat=await fs.stat(resultFile);
+ if(stat.size>1024*1024)throw new Error('Estimate batch result exceeds 1 MiB');
+ const value=JSON.parse(await fs.readFile(resultFile,'utf8'));
+ if(value.requestId!==request.requestId)throw new Error('Stale estimate batch result');
+ const prior=progress.fragments.find(f=>f.batchId===value.batchId),resultHash=hash(value);
+ if(prior){if(prior.resultHash!==resultHash)throw new Error('Estimate batch already recorded with different contents');return {status:'recorded',replayed:true,batchId:value.batchId,completed:progress.completedKeys.length,total:request.entries.length};}
+ if(progress.batchSize===null)throw new Error('Call estimate-next before recording a batch');
+ const batch=assignedBatch(request,progress),expected=new Set(batch.entries.map(e=>e.key));
+ if(value.batchId!==batch.batchId||!Array.isArray(value.items)||value.items.length!==expected.size||new Set(value.items.map(i=>i.key)).size!==expected.size||value.items.some(i=>!expected.has(i.key)))throw new Error('Estimate batch must contain exactly its assigned keys');
+ if(!Array.isArray(value.assumptions)||!value.assumptions.length||value.assumptions.some(x=>!boundedText(x)))throw new Error('Explicit estimation assumptions are required');
+ for(const item of value.items){const hours=['lowHours','likelyHours','highHours'].map(k=>item[k]);if(hours.some(n=>typeof n!=='number'||!Number.isFinite(n)||n<0||n>100000)||hours[0]>hours[1]||hours[1]>hours[2]||!boundedText(item.rationale)||!Array.isArray(item.exclusions)||item.exclusions.some(x=>!boundedText(x)))throw new Error('Invalid estimate item range, rationale or exclusions');}
+ const fragment=`estimation/fragments/${batch.batchId}.json`;
+ await writeJson(inRun(id,fragment),value);
+ progress.fragments.push({batchId:batch.batchId,path:fragment,resultHash});
+ progress.completedKeys.push(...value.items.map(i=>i.key));
+ progress.assumptions=[...new Set([...progress.assumptions,...value.assumptions])];
+ await writeJson(inRun(id,'estimation/progress.json'),progress);
+ return {status:'recorded',batchId:batch.batchId,completed:progress.completedKeys.length,total:request.entries.length,next:progress.completedKeys.length===request.entries.length?'estimate-finish':'estimate-next'};
+}
+export async function finishEstimateBatches(id){
+ const {request,progress}=await currentEstimateState(id);
+ if(progress.completedKeys.length!==request.entries.length)throw new Error('Estimate batches incomplete; use estimate-next');
+ for(const fragment of progress.fragments){const saved=await readJson(inRun(id,fragment.path));if(hash(saved)!==fragment.resultHash)throw new Error('Saved estimate fragment changed after recording');}
+ return assembleEstimates(id,progress.fragments.map(f=>f.path));
 }
 export async function importEstimates(id,result){
  const request=await readJson(inRun(id,'estimation/request.json')),list=await buildList(id);
@@ -103,6 +158,9 @@ export async function execute(id,command,args){
  if(command==='consolidate')return prepareConsolidation(id);
  if(command==='import-consolidation')return importConsolidation(id,await input(args['result-file']));
  if(command==='estimate')return prepareEstimates(id,args);
+ if(command==='estimate-next')return nextEstimateBatch(id,{size:args.size===undefined?undefined:Number(args.size)});
+ if(command==='estimate-record')return recordEstimateBatch(id,args['result-file']);
+ if(command==='estimate-finish')return finishEstimateBatches(id);
  if(command==='import-estimates')return importEstimates(id,await input(args['result-file']));
  if(command==='assemble-estimates')return assembleEstimates(id,await input(args['parts-file']));
  if(command==='merge'){

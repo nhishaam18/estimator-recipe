@@ -32,6 +32,9 @@ Read the advertised skill before resolving resources and invoke these commands w
 | Diagnose/retry a failed packet | batch --run <folder> --retry-request <id> --retry-kind transient\|correction |
 | Correct an imported detection | batch --run <folder> --correction-request <id> |
 | Assemble estimate fragments | assemble-estimates --run <folder> --parts-file <JSON array of run-relative paths> |
+| Next estimate batch | estimate-next --run <folder> [--size 1..10] |
+| Record assigned estimate batch | estimate-record --run <folder> --result-file <absolute JSON> |
+| Finalize recorded batches | estimate-finish --run <folder> |
 
 
 Detection/import receipts return one next packet and counts. Use next after resume, not between successful imports. Resolve prompt/image/result paths under the run folder. work-state.json saves derived progress; execution-notes.json holds compact decisions, job outcomes and quality gaps. See [context budget](context-budget.md). Wait for one bounded foreground command to exit; never background/poll/relaunch an active pipeline.

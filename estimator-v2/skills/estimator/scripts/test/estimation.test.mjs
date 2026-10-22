@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import {createRun,inRun,writeJson,readJson,updateRun} from '../lib/store.mjs';
 import {buildList} from '../lib/buildlist.mjs';
-import {prepareConsolidation,importConsolidation,prepareEstimates,importEstimates,assembleEstimates,exportInventory,execute} from '../lib/estimation.mjs';
+import {prepareConsolidation,importConsolidation,prepareEstimates,importEstimates,assembleEstimates,exportInventory,execute,nextEstimateBatch,recordEstimateBatch,finishEstimateBatches} from '../lib/estimation.mjs';
 async function fixture(t){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'estimator2-'));process.env.CEST_RUNS_DIR=root;t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const run=await createRun({urls:['https://example.invalid/page'],name:'fixture',viewports:['desktop']});
@@ -40,6 +40,29 @@ test('bounded estimate fragments assemble all unique keys and reject duplicates,
  await assert.rejects(assembleEstimates(run.id,[a,b]),/duplicate/);
  await writeJson(inRun(run.id,b),{requestId:'stale',assumptions:['Desktop only'],items:items.slice(2)});
  await assert.rejects(assembleEstimates(run.id,[a,b]),/Stale/);
+});
+test('script-owned estimate batches resume without rereading completed work',async t=>{
+ const run=await fixture(t),prepared=await prepareEstimates(run.id),request=await readJson(inRun(run.id,'estimation/request.json'));
+ const first=await nextEstimateBatch(run.id,{size:2});assert.equal(first.status,'awaiting-estimation');assert.equal(first.keys.length,2);
+ const firstPacket=await readJson(inRun(run.id,first.packet));assert.equal(firstPacket.entries.length,2);assert.equal(firstPacket.requestId,prepared.requestId);
+ const items=keys=>keys.map(key=>({key,lowHours:1,likelyHours:2,highHours:3,rationale:'Observed component scope',exclusions:[]}));
+ const file=inRun(run.id,'estimation/incoming-first.json');await writeJson(file,{requestId:prepared.requestId,batchId:first.batchId,assumptions:['Desktop only'],items:items(first.keys)});
+ await recordEstimateBatch(run.id,file);assert.equal((await nextEstimateBatch(run.id,{size:2})).batchId,'batch-002');
+ assert.equal((await recordEstimateBatch(run.id,file)).replayed,true);
+ const second=await nextEstimateBatch(run.id,{size:2}),secondFile=inRun(run.id,'estimation/incoming-second.json');
+ await writeJson(secondFile,{requestId:prepared.requestId,batchId:second.batchId,assumptions:['Desktop only'],items:items(second.keys)});
+ await recordEstimateBatch(run.id,secondFile);
+ assert.equal((await nextEstimateBatch(run.id)).status,'ready-to-finalize');
+ assert.deepEqual((await finishEstimateBatches(run.id)).totals,{lowHours:4,likelyHours:8,highHours:12});
+ assert.equal((await readJson(inRun(run.id,'estimation/progress.json'))).completedKeys.length,request.entries.length);
+});
+test('estimate batch rejects wrong keys and invalidates progress when evidence changes',async t=>{
+ const run=await fixture(t),prepared=await prepareEstimates(run.id),batch=await nextEstimateBatch(run.id,{size:2});
+ const bad=inRun(run.id,'estimation/bad.json');await writeJson(bad,{requestId:prepared.requestId,batchId:batch.batchId,assumptions:['Desktop only'],items:[{key:'unknown',lowHours:1,likelyHours:2,highHours:3,rationale:'Wrong key',exclusions:[]}]});
+ await assert.rejects(recordEstimateBatch(run.id,bad),/assigned keys/);
+ await writeJson(inRun(run.id,'export/quality.json'),{status:'changed'});
+ await assert.rejects(nextEstimateBatch(run.id),/Stale estimate request/);
+ await prepareEstimates(run.id);assert.equal((await nextEstimateBatch(run.id)).batchId,'batch-001');
 });
 test('estimation defaults to Sitecore without a CMS question and honors explicit overrides',async t=>{
  const run=await fixture(t);await prepareEstimates(run.id);
