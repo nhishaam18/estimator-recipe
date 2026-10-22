@@ -1,0 +1,18 @@
+{
+  "name": "component-estimator-scripts",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Desktop website evidence, screenshot jobs, component inventory and effort estimates.",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "test": "node --test test/accounting.test.mjs test/componentvalidation-integration.test.mjs test/componentvalidation.test.mjs test/imagevalidation.test.mjs test/pipeline.test.mjs test/report.test.mjs test/requestpolicy.test.mjs test/runtime.test.mjs test/urlplan-cli.test.mjs test/urlplanning.test.mjs test/v3-detection.test.mjs test/v3-effort.test.mjs",
+    "test:browser": "node --test test/capture-loop.test.mjs test/requestpolicy-browser.test.mjs test/websiteanalysis-browser.test.mjs"
+  },
+  "dependencies": {
+    "cheerio": "1.0.0",
+    "sharp": "0.35.5"
+  }
+}
